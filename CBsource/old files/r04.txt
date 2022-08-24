@@ -1,0 +1,26 @@
+shkola37025^^^
+0755startday00
+0800zvonok  00
+0845zvonok  00
+0855zvonok  00
+0940zvonok  00
+0950zvonok  00
+1035zvonok  00
+1050zvonok  00
+1135zvonok  00
+1150zvonok  00
+1235zvonok  00
+1250zvonok  00
+1335zvonok  00
+1340preurok 00
+1345zvonok  00
+1430zvonok  00
+1440zvonok  00
+1525zvonok  00
+1535zvonok  00
+1620zvonok  00
+1630zvonok  00
+1715zvonok  00
+1725zvonok  00
+1810zvonok  00
+1811endday  00

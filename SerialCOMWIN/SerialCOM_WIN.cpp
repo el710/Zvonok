@@ -1,0 +1,470 @@
+
+
+#include "SerialCOM_WIN.h"
+
+
+                                       // Windows API defines  WinBase.h
+unsigned int COMBoudRate[] = {110,     // CBR_110
+                              300,     // ...
+                              600,
+                              1200,
+                              2400,
+                              4800,
+                              9600,
+                              14400,
+                              19200,
+                              38400,
+                              56000,
+                              57600,
+                              115200,  // ...
+                              128000,  // CBR_128000
+                              256000}; // CBR_256000
+
+unsigned char COMDataSize[] ={4, 5, 6, 7, 8 };
+
+                                 // Windows API defines  WinBase.h
+unsigned char COMParity[] ={0,   // NOPARITY — бит четности отсутствует;
+                            1,   // ODDPARITY — дополнение до нечетности;
+                            2,   // EVENPARITY — дополнение до четности;
+                            3,   // MARKPARITY — бит четности всегда равен 1;
+                            4};  // SPACEPARITY — Бит четности всегда 0.
+
+                                  // Windows API defines  WinBase.h
+unsigned char COMStopBits[] ={0,  // ONESTOPBIT — один стоповый бит;
+                              1,  // ONE5STOPBIT — полтора стоповых бита (практически не используется);
+                              2}; // TWOSTOPBIT
+
+vector <AnsiString> COMarray;
+
+HANDLE comm_port;
+DCB ComDCB;
+COMMTIMEOUTS ComTimes;
+
+AnsiString GetCOMStatus(AnsiString in_pre, T_Result in_state)
+{
+ if(in_state == COM_CLEAR)  return in_pre+": Состояние простоя...";
+ if(in_state == COM_OK)     return in_pre+": Операция выполнена";
+ if(in_state == COM_INVALID_PARAMETERS) return in_pre+": Заданы неверные параметры";
+ if(in_state == COM_CREATE_ERROR) return in_pre+": OpenCOMPort() Ошибка открытия порта";
+ if(in_state == COM_GETSTATE_ERROR) return in_pre+": GetCommState() Ошибка чтения состояния порта";
+ if(in_state == COM_SETUP_ERROR) return in_pre+": SetCommState() Ошибка настройки порта";
+ if(in_state == COM_SETTIME_ERROR) return in_pre+": SetCommTimeouts() Ошибка настройки таймаутов";
+ if(in_state == COM_ERROR_STATE) return in_pre+": ClearCommError() Установлены ошибки порта";
+ if(in_state == COM_IO_ERROR) return in_pre+": W/R() Ошибка обмена";
+ if(in_state == COM_MASK_PORT_ERROR) return in_pre+": SetCommMask() Ошибка функции";
+ return "unknown parameter";
+}
+
+
+
+
+int InitCOM()
+{
+ AnsiString  sPort,  as_b;
+ unsigned int PortNum;
+
+ COMarray.clear();
+
+ for(PortNum=1; PortNum<256; PortNum++)
+ {
+  as_b ="COM"+IntToStr(PortNum);
+  sPort = "\\\\.\\"+as_b;
+
+  // open in asinc mode
+  comm_port = CreateFile(sPort.c_str(),                     // const char* lpFileName
+                       GENERIC_READ | GENERIC_WRITE,      // unsigned long dwDesiredAccess
+                       NULL,                              // unsigned long dwShareMode
+                       NULL,                              // _SECURITY_ATTRIBUTES * lpSecurityAttributes
+                       OPEN_EXISTING,                     // unsigned long dwCreationDesposition
+                       FILE_FLAG_OVERLAPPED,              // unsigned long dwFlagsAndAttributes
+                       NULL);                             // void * hTemplateFile
+
+  if (comm_port != INVALID_HANDLE_VALUE)
+    {
+     // Save existing port
+     COMarray.push_back(as_b);
+     CloseHandle(comm_port);
+    }
+ } // for
+
+ comm_port = NULL;
+ return 0;
+}
+
+HANDLE * GetCommHandle()
+{
+ return & comm_port;
+}
+
+int GetCOMCount()
+{
+ return COMarray.size();
+}
+
+AnsiString GetCOMItem(unsigned int iter)
+{
+ return COMarray[iter];
+}
+
+
+T_Result CreateCOM(AnsiString s_port,
+                   unsigned int BoudRate,
+                   unsigned char DataSize,
+                   unsigned char Parity,
+                   unsigned char StopBits)
+{
+  // if opened other COM Port
+ if (comm_port != INVALID_HANDLE_VALUE) CloseHandle(comm_port);
+
+ // open in asinc mode
+ comm_port = CreateFile(s_port.c_str(),                     // const char* lpFileName
+                      GENERIC_READ | GENERIC_WRITE,      // unsigned long dwDesiredAccess
+                      NULL,                              // unsigned long dwShareMode
+                      NULL,                              // _SECURITY_ATTRIBUTES * lpSecurityAttributes
+                      OPEN_EXISTING,                     // unsigned long dwCreationDesposition
+                      FILE_FLAG_OVERLAPPED,              // - async unsigned long dwFlagsAndAttributes
+                      NULL);                             // void * hTemplateFile
+
+ if (comm_port == INVALID_HANDLE_VALUE)
+   {
+    comm_port = NULL;
+    return COM_CREATE_ERROR;
+   }
+
+ ComDCB.DCBlength = sizeof(DCB);
+ if ( !GetCommState(comm_port, &ComDCB) )
+   {
+    CloseCOMPort();
+    return COM_GETSTATE_ERROR;
+   }
+
+ ComDCB.BaudRate = BoudRate;
+ ComDCB.ByteSize = DataSize;
+ ComDCB.Parity   = Parity;
+ ComDCB.StopBits = StopBits;
+ ComDCB.fBinary  = true;
+ ComDCB.fParity  = (ComDCB.Parity != NOPARITY) ? 1 : 0;
+ ComDCB.fOutxCtsFlow = 0;
+ ComDCB.fOutxCtsFlow = false;
+ ComDCB.fOutxDsrFlow = false;
+ ComDCB.fDtrControl = DTR_CONTROL_DISABLE;
+ ComDCB.fDsrSensitivity = false;
+ ComDCB.fNull = false;
+ ComDCB.fRtsControl = RTS_CONTROL_DISABLE;
+ ComDCB.fOutX = 0;
+ ComDCB.fInX = 0;
+ ComDCB.fAbortOnError = false;
+
+ if (SetCommState(comm_port, &ComDCB) == 0)
+   {
+    CloseCOMPort();
+    return COM_SETUP_ERROR;
+   }
+
+ if (!GetCommTimeouts(comm_port, &ComTimes))
+   {
+    CloseCOMPort();
+    return COM_SETTIME_ERROR;
+   }
+
+ //set NO USING timeouts
+ ComTimes.ReadIntervalTimeout         = 0;
+ ComTimes.ReadTotalTimeoutMultiplier  = 0;
+ ComTimes.ReadTotalTimeoutConstant    = 100;
+ ComTimes.WriteTotalTimeoutMultiplier = 0;
+ ComTimes.WriteTotalTimeoutConstant   = 0;
+
+ if (!SetCommTimeouts(comm_port, &ComTimes))
+   {
+    CloseCOMPort();
+    return COM_SETTIME_ERROR;
+   }
+
+ // Set size for R and T buffers
+ SetupComm(comm_port, 1024, 1024);
+
+ //  Clean R and T buffers
+ PurgeComm(comm_port, PURGE_RXCLEAR | PURGE_TXCLEAR);
+
+  return COM_OK;
+
+}
+
+
+T_Result OpenCOMPort(unsigned int PortNum,
+                     unsigned int BoudRate,
+                     unsigned char DataSize,
+                     unsigned char Parity,
+                     unsigned char StopBits
+                    )
+{
+ AnsiString  sPort;
+
+ // checkout parameters
+ if (!(PortNum>0 && PortNum<=255)) return COM_INVALID_PARAMETERS;
+
+ sPort = "\\\\.\\COM"+IntToStr(PortNum);
+
+ return CreateCOM(sPort, BoudRate, DataSize, Parity, StopBits);
+}
+
+T_Result OpenCOMPort(AnsiString Port,       // name
+                     unsigned int BoudRate,      // speed
+                     unsigned char DataSize,     // size
+                     unsigned char Parity,
+                     unsigned char StopBits
+                    )
+{
+ AnsiString  sPort;
+
+ // checkout parameters
+ if (Port == "") return COM_INVALID_PARAMETERS;
+
+ sPort = "\\\\.\\"+Port;
+
+ return CreateCOM(sPort, BoudRate, DataSize, Parity, StopBits);
+}
+
+// Close COM Port
+T_Result CloseCOMPort()
+{
+  if (comm_port != INVALID_HANDLE_VALUE && comm_port != NULL)
+  {
+    PurgeComm(comm_port, PURGE_TXABORT | PURGE_RXABORT);
+  }
+
+  CloseHandle(comm_port);
+  comm_port = NULL;
+  return COM_OK;
+}
+
+unsigned int Set_Boud_Rate(unsigned char index)
+{
+ return COMBoudRate[index];
+}
+//------------------------------------------------------------------------
+
+unsigned char Set_Data_Size(unsigned char index)
+{
+ return COMDataSize[index];
+}
+//-----------------------------------------------------------------------
+
+unsigned char Set_Parity(unsigned char index)
+{
+ return COMParity[index];
+}
+//-----------------------------------------------------------------------
+
+
+BOOL IsCOMOpen()
+{
+ return (comm_port != NULL);
+}
+//-----------------------------------------------------------------------
+
+
+T_Result TransmitComPort(void* buffer, DWORD sizeBuffer, DWORD* send)
+{
+  DWORD dwWrite,dwErr,dwRes;
+  BOOL fSuccess;
+  COMSTAT ComState;
+  OVERLAPPED Overlapped = {0,0,0,0,0};
+
+  // create event that will waited at this thread
+  Overlapped.hEvent = CreateEvent(NULL,      // LPSECURITY_ATTRIBUTES
+                                  true,      // bManualReset (false - autoreset)
+                                  false,     // bInitialState (true - Event exists)
+                                  NULL);     // LPCTSTR LPName
+
+  ClearCommError(comm_port, &dwRes, &ComState);
+   //  Clean R and T buffers
+ PurgeComm(comm_port, PURGE_RXCLEAR | PURGE_TXCLEAR);
+
+  if (dwRes == 0)
+    {
+     fSuccess = WriteFile(comm_port, buffer, sizeBuffer, &dwWrite, &Overlapped);
+    }
+    else
+    {
+     return COM_ERROR_STATE;
+    }
+
+  if (fSuccess)
+    {
+     *send = dwWrite;
+     return COM_OK;
+    }
+
+  dwErr = GetLastError();
+  if (dwErr == ERROR_IO_PENDING)
+    {
+     // Wait for Event...
+     dwRes = WaitForSingleObject(Overlapped.hEvent, INFINITE);
+
+     if (dwRes == WAIT_OBJECT_0)    // got event
+       {
+        if (GetOverlappedResult(comm_port, &Overlapped, &dwWrite, FALSE) != 0)
+          {
+           // Write completed successfully.
+           *send = dwWrite;
+           return COM_OK;
+          }
+       }
+    }
+ ClearCommError(comm_port, &dwRes, &ComState);
+
+ return COM_IO_ERROR;
+}
+
+
+T_Result ReceiveComPort(void* buffer, DWORD sizeBuffer, DWORD* read)
+{
+  DWORD dwRead,dwErr,dwRes;
+  BOOL fSuccess;
+  COMSTAT ComState;
+  OVERLAPPED sync = {0};
+//  unsigned long state = 0;
+
+  // создаем объект синхронизации
+  sync.hEvent = CreateEvent(NULL,      // LPSECURITY_ATTRIBUTES
+                            true,      // bManualReset (false - autoreset)
+                            false,     // bInitialState (true - Event exists)
+                            NULL);     // LPCTSTR LPName
+
+  ClearCommError(comm_port, &dwRes, &ComState);
+
+  if (dwRes != 0)
+  {
+    CloseHandle(sync.hEvent);
+    return COM_ERROR_STATE;
+  }
+
+/* test: need testing
+  // устанавливаем маску на события порта
+  if(SetCommMask(comm_port, EV_RXCHAR) == 0) return RES_MASK_PORT_ERROR;
+  // связываем порт и объект синхронизации
+  WaitCommEvent(comm_port, &state, &sync);
+  // начинаем ожидание данных
+  dwRes = WaitForSingleObject(sync.hEvent, 100); // 100 msec
+  if(dwRes == WAIT_OBJECT_0) // данные получены
+    {
+test */
+
+     fSuccess = ReadFile(comm_port, buffer, sizeBuffer, &dwRead, &sync);
+
+    //  ждем завершения чтения
+    dwRes = WaitForSingleObject(sync.hEvent, 100); // 100 msec
+    if(dwRes == WAIT_OBJECT_0) // чтение завершено
+      {
+       // узнаем объем считаного
+       if (GetOverlappedResult(comm_port, &sync, &dwRead, FALSE))
+         {
+          *read = dwRead;
+          CloseHandle(sync.hEvent);
+          return COM_OK;
+         }
+      }
+
+     if (fSuccess)
+       {
+        *read = dwRead;
+        CloseHandle(sync.hEvent);
+        return COM_OK;
+       }
+/* test
+     }
+test */
+
+ *read = 0;
+ CloseHandle(sync.hEvent);
+ ClearCommError(comm_port, &dwRes, &ComState);
+
+ return COM_IO_ERROR;
+}
+
+
+/*/ ========================================================================
+// EXAMPLE USING IN BORLAND C++ ===========================================
+
+// Find enabled COM ports and make a list in TComboBox ====================
+int FindComm()
+{
+ unsigned int i,j;
+ AnsiString ws;
+
+ InitCOM();
+ SetupWindow->COMList->Items->Clear();
+
+ i = GetCOMCount();
+ for(j=0;j<i;j++)
+ {
+   ws = GetCOMItem(j);
+   SetupWindow->COMList->Items->Add(GetCOMItem(j));
+  }
+  if(i==0)
+    {
+     SetupWindow->COMList->Items->Add("Нет COM портов");
+     SetupWindow->COMConnect->Caption = "Поиск СОМ";
+     SetupWindow->SetupLog->Caption = "СOM порты не обнаружены";
+    }
+    else
+    {
+     SetupWindow->COMConnect->Caption = "Подключение";
+     SetupWindow->SetupLog->Caption = "Обнаружено "+IntToStr(i)+" СОM портов";
+    }
+  SetupWindow->COMList->ItemIndex = 0;
+}
+
+// Control of connecting =======================================
+void __fastcall TSetupWindow::COMConnectClick(TObject *Sender)
+{
+ t_Result COMres;
+ unsigned int num_port, port_speed;
+ unsigned char data_size, parity;
+ AnsiString COMname;
+
+ COMname =  SetupWindow->COMList->Text;
+
+
+ if(IsCOMOpen())   //Disconnect
+   {
+    CloseCOMPort();
+    SetupWindow->COMConnect->Caption = "Подключение";
+    SetupWindow->SetupLog->Caption = COMname+" отключен";
+    SetupWindow->ButCommSetup->Enabled =false;
+   }
+   else
+ if(GetCOMCount() == 0) // Try to find COM ports
+   {
+    FindComm();
+   }
+   else     // Connect
+   {
+    COMname =  SetupWindow->COMList->Text;
+    port_speed = CBR_115200;
+    data_size = DEF_COMM_DATA_SIZE;
+    parity = DEF_COMM_PARITY;
+
+    COMres = OpenCOMPort(COMname, port_speed, data_size, parity, ONESTOPBIT);
+
+    if(COMres == RES_OK)
+      {
+       SetupWindow->SetupLog->Caption = COMname+" открыт";
+       SetupWindow->COMConnect->Caption = "Отключить";
+       SetupWindow->ButCommSetup->Enabled =true;
+      }else
+    if(COMres == RES_CREATE_ERROR)
+      {
+       FindComm();
+      }
+      else
+      {
+       SetupWindow->SetupLog->Caption = COMname+" ошибка открытия: "+COMres;
+       SetupWindow->COMConnect->Caption = "Подключение";
+       SetupWindow->ButCommSetup->Enabled =false;
+      }
+   }
+}
+
+=====================================================================/*/
