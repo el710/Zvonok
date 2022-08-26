@@ -1385,6 +1385,7 @@ int GetRingState()
   if( io_res == COM_IO_ERROR || res == R_COMM_ERROR)
   {
     SetSupFail(SUP_RING_NO_ANSWER);
+    MainForm->RingLinkState->Caption="нет связи";
   }
 
   as_buf = GetCOMStatus("Прием данных",io_res);
@@ -1393,6 +1394,7 @@ int GetRingState()
   if(res == R_OK && RingStatus.head.index == RING_GET_STATE)
   {
     SetSupClear(SUP_RING_NO_ANSWER);
+    MainForm->RingLinkState->Caption="Связь установлена";
 
     RingState.all = RingStatus.data.data1;
     status = "Ring:";
@@ -1402,12 +1404,14 @@ int GetRingState()
       MainForm->ButStateRing->Font->Color = clGreen;
       status += "готов; ";
       SetSupClear(SUP_RING_SETUP);
+      MainForm->RingModeState->Caption="Готов";
     }
     else
     {
       MainForm->ButStateRing->Font->Color = clRed;
       status += "режим настройки; ";
       SetSupFail(SUP_RING_SETUP);
+      MainForm->RingModeState->Caption="Режим настройки";
     }
 
     status += "EMB RTS: ";
@@ -1421,6 +1425,9 @@ int GetRingState()
                         + IntToStr(RingStatus.data.data3) + ":"
                         + IntToStr(RingStatus.data.data4);
         status +="OK; ";
+        MainForm->RingEmbRTC->Caption = "Работают "+ IntToStr(RingStatus.data.data2) + ":"
+                                        + IntToStr(RingStatus.data.data3) + ":"
+                                        + IntToStr(RingStatus.data.data4);
         break;
       }
       case RTC_RESET:
@@ -1433,12 +1440,14 @@ int GetRingState()
                        + IntToStr(RingStatus.data.data2) + ":"
                        + IntToStr(RingStatus.data.data3) + ":"
                        + IntToStr(RingStatus.data.data4);
+        MainForm->RingEmbRTC->Caption = "Не настроены";
         break;
       }
       case RTC_NO:
       {
         as_buf = as_buf + " не найдены";
         status +="не найдены; ";
+        MainForm->RingEmbRTC->Caption = "Не найдены";
         break;
       }
       default:
@@ -1448,6 +1457,7 @@ int GetRingState()
                         + IntToStr(RingStatus.data.data3) + ":"
                         + IntToStr(RingStatus.data.data4);
         status +="нет данных; ";
+        MainForm->RingEmbRTC->Caption = "Нет данных";
       }
     }// switch
     MainForm->Memo1->Lines->Add(as_buf);
@@ -1525,7 +1535,11 @@ int GetRingState()
   else
   {
     MainForm->Memo1->Lines->Add("Ошибка приема : "+IntToStr(res));
+    MainForm->RingLinkState->Caption="нет связи";
+
+    SetSupFail(SUP_RING_NO_ANSWER);
   }
+
 
 
   return res;
@@ -1830,6 +1844,7 @@ int SendSchedule(AnsiString in_SchedFile)
    {
      MainForm->Memo1->Lines->Add("");
      MainForm->Memo1->Lines->Add("передача блока файла расписания "+IntToStr(io_iter)+" из "+IntToStr(block_count) );
+
      SetIdleData(&kvblock_info, sizeof(kvblock_info));
 
      res = SendToRing(io_buf, block_size,
@@ -3612,7 +3627,7 @@ void __fastcall TMainForm::ButCommSetupClick(TObject *Sender)
 
 void __fastcall TMainForm::ButStartClick(TObject *Sender)
 {
-  int i;
+  int res, i;
 
   RingAutoControl = false;
   MainForm->ButStart->Enabled = false;
@@ -3620,18 +3635,45 @@ void __fastcall TMainForm::ButStartClick(TObject *Sender)
   if(IsCOMOpen())
   {
     stop_process = false;
-
-    if(MainForm->FSyncTime->Checked)
+    i = 1;
+    while (i != 5 && !stop_process )
     {
-      i = TimeSync();
-      ShowStatus("Ring:  синхронизация времени", i);
-    }
-
-    if(MainForm->FSyncShed->Checked)
-    {
-      i = SendSchedule(WorkScheduleFile);
-      ShowStatus("Ring: передача расписания", i);
-    }
+     Application->ProcessMessages();
+      switch (i)
+      {
+        case 1:
+        case 3:
+        {
+          res = GetRingState();
+          ShowStatus("Опрос состояние Ring: ", res);
+          if(res == R_OK)
+          {
+            if(i==1) i=2; else i=4;
+          }else i=5;
+          break;
+        }
+        case 2:
+        {
+          if(MainForm->FSyncShed->Checked)
+          {
+            res = SendSchedule(WorkScheduleFile);
+            ShowStatus("Ring: передача расписания", res);
+            if(res == R_OK) i=3; else i = 5;
+            break;
+          }else i = 4;
+        }
+        case 4:
+        {
+          if(MainForm->FSyncTime->Checked)
+          {
+            res = TimeSync();
+            ShowStatus("Ring:  синхронизация времени", res);
+          }
+          i = 5;
+          Sleep(MainForm->COMDelayBF->Position);
+        }
+      }//switch
+    }// while
   }
   else
   {

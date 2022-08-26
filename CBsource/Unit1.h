@@ -157,7 +157,6 @@ __published:	// IDE-managed Components
         TTabSheet *RingHandPage;
         TGroupBox *GroupBox2;
         TLabel *Label6;
-        TSpeedButton *ButStateRing;
         TCheckBox *FSyncTime;
         TCheckBox *FSyncShed;
         TButton *ButStart;
@@ -178,11 +177,12 @@ __published:	// IDE-managed Components
         TLabel *Label16;
         TLabel *Label17;
         TLabel *Label18;
-        TLabel *Label19;
-        TLabel *Label20;
-        TLabel *Label21;
+        TLabel *RingLinkState;
+        TLabel *RingModeState;
+        TLabel *RingEmbRTC;
         TLabel *Label22;
         TLabel *Label23;
+        TSpeedButton *ButStateRing;
         void __fastcall Exit_menuClick(TObject *Sender);
         void __fastcall FormCreate(TObject *Sender);
         void __fastcall N2Click(TObject *Sender);

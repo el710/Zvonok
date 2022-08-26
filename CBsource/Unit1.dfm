@@ -1688,7 +1688,7 @@ object MainForm: TMainForm
                 object MediaPlayer1: TMediaPlayer
                   Left = 163
                   Top = 88
-                  Width = 57
+                  Width = -1
                   Height = 25
                   EnabledButtons = [btPlay, btStop, btEject]
                   VisibleButtons = [btPlay, btStop]
@@ -2070,21 +2070,21 @@ object MainForm: TMainForm
                 Height = 16
                 Caption = #1056#1077#1078#1080#1084':'
               end
-              object Label19: TLabel
+              object RingLinkState: TLabel
                 Left = 152
                 Top = 48
                 Width = 94
                 Height = 16
                 Caption = #1085#1077' '#1087#1086#1076#1082#1083#1102#1095#1077#1085
               end
-              object Label20: TLabel
+              object RingModeState: TLabel
                 Left = 152
                 Top = 88
                 Width = 92
                 Height = 16
                 Caption = #1085#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085
               end
-              object Label21: TLabel
+              object RingEmbRTC: TLabel
                 Left = 152
                 Top = 128
                 Width = 172
@@ -2104,6 +2104,14 @@ object MainForm: TMainForm
                 Width = 172
                 Height = 16
                 Caption = #1089#1086#1089#1090#1086#1103#1085#1080#1077' '#1085#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
+              end
+              object ButStateRing: TSpeedButton
+                Left = 424
+                Top = 16
+                Width = 129
+                Height = 22
+                Caption = #1054#1087#1088#1086#1089#1080#1090#1100' Ring'
+                OnClick = ButStateRingClick
               end
               object DefRingUnited: TCheckBox
                 Left = 8
@@ -2183,17 +2191,9 @@ object MainForm: TMainForm
                   Height = 16
                   Caption = #1055#1077#1088#1077#1076#1072#1095#1072' '#1089' '#1079#1072#1076#1077#1088#1078#1082#1086#1081
                 end
-                object ButStateRing: TSpeedButton
-                  Left = 16
-                  Top = 104
-                  Width = 129
-                  Height = 22
-                  Caption = #1057#1086#1089#1090#1086#1103#1085#1080#1077' Ring'
-                  OnClick = ButStateRingClick
-                end
                 object FSyncTime: TCheckBox
                   Left = 16
-                  Top = 24
+                  Top = 56
                   Width = 73
                   Height = 17
                   Caption = #1042#1088#1077#1084#1103
@@ -2203,7 +2203,7 @@ object MainForm: TMainForm
                 end
                 object FSyncShed: TCheckBox
                   Left = 16
-                  Top = 56
+                  Top = 24
                   Width = 97
                   Height = 17
                   Caption = #1056#1072#1089#1087#1080#1089#1072#1085#1080#1077
