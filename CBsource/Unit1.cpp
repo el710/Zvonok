@@ -2581,13 +2581,36 @@ void SaveEvent(bool new_event)
 
 int LoadSetup(AnsiString in_dir, T_SoundFiles * in_set)
 {
- AnsiString  as_buf;
- AnsiString bs,ws; 
+  AnsiString  as_buf;
+  AnsiString bs,ws;
   int i,res;
 
+  //  set default data - for no setup files
+  MainForm->DefRingUnited->Checked = DEF_RING_UNIT;
+  as_buf =  RING_LINK;
+  MainForm->DefRingComm->Checked = true;
 
- if(FileExists(in_dir+SETUP_FILE))
-   {
+  CommName = DEF_COMM_NAME;
+  SetSupFail(SUP_DEF_COMM);
+
+  MainForm->COMDelayBF->Position = COM_DELAY_BF;
+
+  MainForm->RingDelay->Position = DEF_RING_DELAY;
+  MainForm->UpBoosterDelay->Position = DEF_UP_BOOSTER_DELAY;
+  MainForm->DownBoosterDelay->Position = DEF_DOWN_BOOSTER_DELAY;
+
+  MainForm->DefShowWarnWindow->Checked = DEF_SHOW_WORN_WIN;
+
+  MainForm->ListTimeZone->ItemIndex = DEF_TIME_ZONE - 2;
+
+  WorkScheduleFile = DEF_SCHEDULE_FILE;
+  in_set->SetAlarmFile = DEF_ALARM_SOUND;
+  in_set->SetFireFile = DEF_FIRE_SOUND;
+  in_set->SetRingFile = DEF_RING_SOUND;
+
+// try to find setup files
+  if(FileExists(in_dir+SETUP_FILE))
+  {
     MainForm->DefRingUnited->Checked = ini_file->ReadInteger(INI_DEP_RING, INI_RING_UNIT, DEF_RING_UNIT);
     as_buf =  ini_file->ReadString(INI_DEP_RING, INI_RING_LINK, RING_LINK);
     MainForm->DefRingComm->Checked = (as_buf == RING_LINK)? true: false ;
@@ -2613,222 +2636,209 @@ int LoadSetup(AnsiString in_dir, T_SoundFiles * in_set)
     in_set->SetFireFile = ini_file->ReadString(INI_DEP_FILES, INI_USE_FIRE, DEF_FIRE_SOUND);
     in_set->SetRingFile = ini_file->ReadString(INI_DEP_FILES, INI_USE_RING, DEF_RING_SOUND);
 
-     res = R_OK;
-   }// if new file
-   else
-   {
-     if( FileExists(in_dir+OLD_PAR_FILE) )
-     {
-       MainForm->Memo2->Lines->Clear();
-       MainForm->Memo2->Lines->LoadFromFile(in_dir+OLD_PAR_FILE);
+    res = R_OK;
+  }// if new file
+  else
+  {
+    if( FileExists(in_dir+OLD_PAR_FILE) )
+    {
+      MainForm->Memo2->Lines->Clear();
+      MainForm->Memo2->Lines->LoadFromFile(in_dir+OLD_PAR_FILE);
 
-       if(MainForm->Memo2->Lines->Count>0) // UP & DOWN BOOSTER
-       {
-         bs=MainForm->Memo2->Lines->Strings[0];   //Lines->GetText(); - take all strings in one
+      if(MainForm->Memo2->Lines->Count>0) // UP & DOWN BOOSTER
+      {
+        bs=MainForm->Memo2->Lines->Strings[0];   //Lines->GetText(); - take all strings in one
 
-         if(bs.Length() >= 2 ) ws=bs.SubString(1,2);
-         else
-         {
-           ws="-";
-           MainForm->Memo1->Lines->Add("read failed!");
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
+        if(bs.Length() >= 2 ) ws=bs.SubString(1,2);
+        else
+        {
+          ws="-";
+          MainForm->Memo1->Lines->Add("read failed!");
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+
+        MainForm->Memo1->Lines->Add("read UpBoosterDelay = "+ws);
+        if(TryStrToInt(ws,i))
+        {
+          if(i>=0 && i<99)
+          {
+            MainForm->UpBoosterDelay->Position = i;
+          }
+          else
+          {
+            MainForm->Memo1->Lines->Add("read failed!");
+            MainForm->UpBoosterDelay->Position = DEF_UP_BOOSTER_DELAY;
+            res = R_READ_FILE_ERROR;
+            SetSupFail(SUP_FREAD_SETUP);
+          }
+        }
+        else
+        {
+          MainForm->Memo1->Lines->Add("read failed!");
+          MainForm->UpBoosterDelay->Position = DEF_UP_BOOSTER_DELAY;
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+
+        MainForm->Memo1->Lines->Add("Set UpBoosterDelay = "+IntToStr(MainForm->UpBoosterDelay->Position));
+
+        if(bs.Length() >= 4) ws=bs.SubString(3,2);
+        else
+        {
+          ws="-";
+          MainForm->Memo1->Lines->Add("read failed!");
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+        MainForm->Memo1->Lines->Add("read DownBoosterDelay = "+ws);
+        if(TryStrToInt(ws,i))
+        {
+          if(i>=0 && i<99)
+          {
+            MainForm->DownBoosterDelay->Position = i;
+          }
+          else
+          {
+            MainForm->DownBoosterDelay->Position = DEF_DOWN_BOOSTER_DELAY;
+            MainForm->Memo1->Lines->Add("read failed!");
+            res = R_READ_FILE_ERROR;
+            SetSupFail(SUP_FREAD_SETUP);
+          }
          }
-
-         MainForm->Memo1->Lines->Add("read UpBoosterDelay = "+ws);
-         if(TryStrToInt(ws,i))
-         {
-           if(i>=0 && i<99)
-           {
-             MainForm->UpBoosterDelay->Position = i;
-           }
-           else
-           {
-             MainForm->Memo1->Lines->Add("read failed!");
-             MainForm->UpBoosterDelay->Position = DEF_UP_BOOSTER_DELAY;
-             res = R_READ_FILE_ERROR;
-             SetSupFail(SUP_FREAD_SETUP);
-           }
-         }
-         else
-         {
-           MainForm->Memo1->Lines->Add("read failed!");
-           MainForm->UpBoosterDelay->Position = DEF_UP_BOOSTER_DELAY;
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
-         }
-
-         MainForm->Memo1->Lines->Add("Set UpBoosterDelay = "+IntToStr(MainForm->UpBoosterDelay->Position));
-
+        else
+        {
+          MainForm->DownBoosterDelay->Position = DEF_DOWN_BOOSTER_DELAY;
+          MainForm->Memo1->Lines->Add("read failed!");
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+        MainForm->Memo1->Lines->Add("Set DownBoosterDelay = "+IntToStr(MainForm->DownBoosterDelay->Position));
+      }  // UP & DOWN BOOSTER
+      else
+      {
+        MainForm->Memo1->Lines->Add("Read Delays failed");
+        res = R_READ_FILE_ERROR;
+        SetSupFail(SUP_FREAD_SETUP);
+      }
+      if(MainForm->Memo2->Lines->Count>1) // Time zone & Winter Time
+      {
+        bs=MainForm->Memo2->Lines->Strings[1];
+        if(bs.Length() >= 2) ws=bs.SubString(1,2);
+        else
+        {
+          ws="-";
+          MainForm->Memo1->Lines->Add("read TimeZone failed!");
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+        MainForm->Memo1->Lines->Add("read TimeZone = "+ws);
+        if(TryStrToInt(ws,i))
+        {
+          if(i>=2 && i<13)
+          {
+            MainForm->ListTimeZone->ItemIndex = i;
+          }
+          else
+          {
+            MainForm->ListTimeZone->ItemIndex = DEF_TIME_ZONE - 2;
+            MainForm->Memo1->Lines->Add("read TimeZone failed!");
+            res = R_READ_FILE_ERROR;
+            SetSupFail(SUP_FREAD_SETUP);
+          }
+        }
+        else
+        {
+          MainForm->ListTimeZone->ItemIndex = DEF_TIME_ZONE - 2;
+          MainForm->Memo1->Lines->Add("read TimeZone failed!");
+          res = R_READ_FILE_ERROR;
+          SetSupFail(SUP_FREAD_SETUP);
+        }
+        MainForm->Memo1->Lines->Add("Set TimeZone = "+IntToStr(MainForm->ListTimeZone->ItemIndex+2));
+            /*
          if(bs.Length() >= 4) ws=bs.SubString(3,2);
-         else
-         {
-           ws="-";
-           MainForm->Memo1->Lines->Add("read failed!");
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
-         }
-         MainForm->Memo1->Lines->Add("read DownBoosterDelay = "+ws);
-
-         if(TryStrToInt(ws,i))
-         {
-           if(i>=0 && i<99)
+           else
            {
-             MainForm->DownBoosterDelay->Position = i;
+            ws="-";
+            MainForm->Memo1->Lines->Add("read WinterTime failed!");
+           }
+         MainForm->Memo1->Lines->Add("read WinterTime = "+ws);
+            if(TryStrToInt(ws,i))
+           {
+            if(i>=0 && i<2)
+              {
+               set->winter_time = i;
+              }
+              else
+              {
+               set->winter_time = DEF_WINTER_TIME;
+               MainForm->Memo1->Lines->Add("read WinterTime failed!");
+              }
            }
            else
            {
-             MainForm->DownBoosterDelay->Position = DEF_DOWN_BOOSTER_DELAY;
-             MainForm->Memo1->Lines->Add("read failed!");
-             res = R_READ_FILE_ERROR;
-             SetSupFail(SUP_FREAD_SETUP);
+            set->winter_time = DEF_WINTER_TIME;
+            MainForm->Memo1->Lines->Add("read WinterTime failed!");
            }
-         }
-         else
-         {
-           MainForm->DownBoosterDelay->Position = DEF_DOWN_BOOSTER_DELAY;
-           MainForm->Memo1->Lines->Add("read failed!");
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
-         }
+         MainForm->Memo1->Lines->Add("Set WinterTime = "+IntToStr(set->winter_time));
+         */
+      }// Time zone & Winter Time
+      else
+      {
+        MainForm->Memo1->Lines->Add("read Zone & WinterTime failed!");
+        res = R_READ_FILE_ERROR;
+        SetSupFail(SUP_FREAD_SETUP);
+      }
+      if(MainForm->Memo2->Lines->Count>2) // USER ALARM SOUND
+      {
+        bs=MainForm->Memo2->Lines->Strings[2];
 
-         MainForm->Memo1->Lines->Add("Set DownBoosterDelay = "+IntToStr(MainForm->DownBoosterDelay->Position));
-       }  // UP & DOWN BOOSTER
-       else
-       {
-         MainForm->Memo1->Lines->Add("Read Delays failed");
-         res = R_READ_FILE_ERROR;
-         SetSupFail(SUP_FREAD_SETUP);
-       }
+        MainForm->Memo1->Lines->Add("read file for alarm = "+bs);
 
-       if(MainForm->Memo2->Lines->Count>1) // Time zone & Winter Time
-       {
-         bs=MainForm->Memo2->Lines->Strings[1];
+        while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
 
-         if(bs.Length() >= 2) ws=bs.SubString(1,2);
-         else
-         {
-           ws="-";
-           MainForm->Memo1->Lines->Add("read TimeZone failed!");
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
-         }
-         MainForm->Memo1->Lines->Add("read TimeZone = "+ws);
+        ws = in_dir+bs;
+        if(FileExists(ws)) in_set->SetAlarmFile = bs;
+                      else in_set->SetAlarmFile = DEF_ALARM_SOUND;
+        MainForm->Memo1->Lines->Add("Set ALARM sound = "+in_set->SetAlarmFile);
+      } // DEF ALARM SOUND
 
-         if(TryStrToInt(ws,i))
-         {
-           if(i>=2 && i<13)
-           {
-             MainForm->ListTimeZone->ItemIndex = i;
-           }
-           else
-           {
-             MainForm->ListTimeZone->ItemIndex = DEF_TIME_ZONE - 2;
-             MainForm->Memo1->Lines->Add("read TimeZone failed!");
-             res = R_READ_FILE_ERROR;
-             SetSupFail(SUP_FREAD_SETUP);
-           }
-         }
-         else
-         {
-           MainForm->ListTimeZone->ItemIndex = DEF_TIME_ZONE - 2;
-           MainForm->Memo1->Lines->Add("read TimeZone failed!");
-           res = R_READ_FILE_ERROR;
-           SetSupFail(SUP_FREAD_SETUP);
-         }
-         MainForm->Memo1->Lines->Add("Set TimeZone = "+IntToStr(MainForm->ListTimeZone->ItemIndex+2));
+      if(MainForm->Memo2->Lines->Count>3) // DEF FIRE SOUND
+      {
+        bs=MainForm->Memo2->Lines->Strings[3];
+        MainForm->Memo1->Lines->Add("read file for fire = "+bs);
+        while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
+        ws = in_dir+bs;
+        if( FileExists(ws) )  in_set->SetFireFile = bs;
+                         else in_set->SetFireFile = DEF_FIRE_SOUND;
 
-          /*
-          if(bs.Length() >= 4) ws=bs.SubString(3,2);
-            else
-            {
-             ws="-";
-             MainForm->Memo1->Lines->Add("read WinterTime failed!");
-            }
-          MainForm->Memo1->Lines->Add("read WinterTime = "+ws);
+        MainForm->Memo1->Lines->Add("Set FIRE sound = "+in_set->SetFireFile);
+      } // DEF FIRE SOUND
+      if(MainForm->Memo2->Lines->Count>4) // DEF TEST SOUND
+      {
+        bs=MainForm->Memo2->Lines->Strings[4];
 
-          if(TryStrToInt(ws,i))
-            {
-             if(i>=0 && i<2)
-               {
-                set->winter_time = i;
-               }
-               else
-               {
-                set->winter_time = DEF_WINTER_TIME;
-                MainForm->Memo1->Lines->Add("read WinterTime failed!");
-               }
-            }
-            else
-            {
-             set->winter_time = DEF_WINTER_TIME;
-             MainForm->Memo1->Lines->Add("read WinterTime failed!");
-            }
-          MainForm->Memo1->Lines->Add("Set WinterTime = "+IntToStr(set->winter_time));
-          */
-       }// Time zone & Winter Time
-       else
-       {
-         MainForm->Memo1->Lines->Add("read Zone & WinterTime failed!");
-         res = R_READ_FILE_ERROR;
-         SetSupFail(SUP_FREAD_SETUP);
-       }
+        MainForm->Memo1->Lines->Add("read file for test = "+bs);
 
-       if(MainForm->Memo2->Lines->Count>2) // USER ALARM SOUND
-       {
-         bs=MainForm->Memo2->Lines->Strings[2];
+        while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
 
-         MainForm->Memo1->Lines->Add("read file for alarm = "+bs);
+        ws = in_dir+bs;
+        if( FileExists(ws) ) in_set->SetRingFile = bs;
+                        else in_set->SetRingFile = DEF_RING_SOUND;
+        MainForm->Memo1->Lines->Add("Set TEST sound = "+in_set->SetRingFile);
+      } // DEF TEST SOUND
 
-         while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
+    }// is old setup
+    else
+    {
+      res = R_NO_FILE;
+      SetSupFail(SUP_IS_SETUP);
+    }
 
-         ws = in_dir+bs;
-         if(FileExists(ws)) in_set->SetAlarmFile = bs;
-                       else in_set->SetAlarmFile = DEF_ALARM_SOUND;
-         MainForm->Memo1->Lines->Add("Set ALARM sound = "+in_set->SetAlarmFile);
-       } // DEF ALARM SOUND
+    SetSupFail(SUP_DEF_COMM);
+    CommName = DEF_COMM_NAME;
 
-       if(MainForm->Memo2->Lines->Count>3) // DEF FIRE SOUND
-       {
-         bs=MainForm->Memo2->Lines->Strings[3];
-
-         MainForm->Memo1->Lines->Add("read file for fire = "+bs);
-
-         while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
-
-         ws = in_dir+bs;
-         if( FileExists(ws) )  in_set->SetFireFile = bs;
-                          else in_set->SetFireFile = DEF_FIRE_SOUND;
-
-         MainForm->Memo1->Lines->Add("Set FIRE sound = "+in_set->SetFireFile);
-       } // DEF FIRE SOUND
-
-       if(MainForm->Memo2->Lines->Count>4) // DEF TEST SOUND
-       {
-         bs=MainForm->Memo2->Lines->Strings[4];
-
-         MainForm->Memo1->Lines->Add("read file for test = "+bs);
-
-         while (bs.AnsiPos(" ") != 0 ) bs.Delete(bs.AnsiPos(" "),1);
-
-         ws = in_dir+bs;
-         if( FileExists(ws) ) in_set->SetRingFile = bs;
-                         else in_set->SetRingFile = DEF_RING_SOUND;
-
-         MainForm->Memo1->Lines->Add("Set TEST sound = "+in_set->SetRingFile);
-       } // DEF TEST SOUND
-
-     }// is old setup
-     else
-     {
-       res = R_NO_FILE;
-       SetSupFail(SUP_IS_SETUP);
-     }
-
-     SetSupFail(SUP_DEF_COMM);
-     CommName = DEF_COMM_NAME;
-
-   }// is ini
+  }// is ini
 
  return res;
 }
