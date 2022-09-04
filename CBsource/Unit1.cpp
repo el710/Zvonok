@@ -11,7 +11,9 @@
 #include "Unit1.h"
 
 #include "Defines.h"
+
 #include "Schedlib.h"
+
 #include "Ring_prot.h"
 #include "CRC32.h"
 #include "SerialCOM_WIN.h"
@@ -369,7 +371,7 @@ int AddSoundList(AnsiString & sound_file)
 
 unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_Event> & Base)
 {
-  int i,j,k,reccount, wd, num;
+  int i,j,k,reccount, wd, num, i_ch;
   unsigned int res;
   AnsiString bs,ws,str_buf, w_file;
   bool variants[100];
@@ -381,7 +383,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
 
   char c_buf[100];
 
-  if( FileExists(in_dir+in_SchedFile) ) // new format shedule
+  if( FileExists(in_SchedFile) ) // new format shedule
   {
     MainForm->Memo2->Lines->Clear();
     MainForm->Memo2->Lines->LoadFromFile(in_dir+in_SchedFile);
@@ -456,6 +458,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
       if(correct_event && (Founded_rec==3))  // message
       {
         if(k == 0 ) temp_list[0].message_text = bs;
+
         if(k < temp_list[0].cycle_flags.el.id_rfile)
         {
           temp_list[0].Message.push_back(bs); ++k;
@@ -2629,9 +2632,13 @@ int LoadSetup(AnsiString in_dir, T_SoundFiles * in_set)
     MainForm->ListTimeZone->ItemIndex = ini_file->ReadInteger(INI_DEP_UI, INI_TIME_ZONE, DEF_TIME_ZONE) - 2;
 
     WorkScheduleFile = ini_file->ReadString(INI_DEP_FILES, INI_SCHEDULE_FILE, DEF_SCHEDULE_FILE);
+    if(WorkScheduleFile == "")  WorkScheduleFile = DEF_SCHEDULE_FILE;
     in_set->SetAlarmFile = ini_file->ReadString(INI_DEP_FILES, INI_USE_ALARM, DEF_ALARM_SOUND);
+    if(in_set->SetAlarmFile == "")  in_set->SetAlarmFile = DEF_ALARM_SOUND;
     in_set->SetFireFile = ini_file->ReadString(INI_DEP_FILES, INI_USE_FIRE, DEF_FIRE_SOUND);
+    if(in_set->SetFireFile == "" ) in_set->SetFireFile = DEF_FIRE_SOUND;
     in_set->SetRingFile = ini_file->ReadString(INI_DEP_FILES, INI_USE_RING, DEF_RING_SOUND);
+    if(in_set->SetRingFile =="" )  in_set->SetRingFile = DEF_RING_SOUND;
 
     res = R_OK;
   }// if new file
@@ -4219,8 +4226,7 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
 
   T_EList EList;
 
-  t_Event event;
-  t_Event* p_event;
+  t_Event event, list_event;
 
   T_Item* p_item;
 
@@ -4256,11 +4262,12 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
       tfile->Read(virtual_file,tfile->Size);
       MainForm->Memo1->Lines->Add("Get virtual_file");
 
-      //EList = EList_new();
       EList_init(&EList);
       MainForm->Memo1->Lines->Add("Make List: "+IntToHex((int)(&EList),8));
 
       TodayList.clear();
+
+      InitEventEm(&event);
 
       point = 0; state = 0;
       while(point < tfile->Size)
@@ -4286,7 +4293,7 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
         if(str[0] == 0x23)
         {
          // new record
-         InitEvent(&event); state = 1;
+         state = 1;
         }
         else
         {
@@ -4331,16 +4338,16 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
           else
           if(state == 2) // sound file
           {
-            event.message_file=as_buf;
-            if(FileExists(wdir+as_buf))
+            if(i_ch == 0)
             {
-              AddSoundList(wdir+as_buf);
-              event.event_sign.el.is_sound = 1;
+              event.event_sign.el.is_sound = 0;
             }
             else
             {
-              event.message_file = "";
-              event.event_sign.el.is_sound = 0;
+              if(i_ch > SOUND_FILENAME_SIZE) i_ch = SOUND_FILENAME_SIZE;
+              strncpy(event.sound,str,i_ch);
+              event.sound[i_ch] = 0;
+              event.event_sign.el.is_sound = 1;
             }
 
             mes_str_num=0;
@@ -4349,20 +4356,19 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
           else
           if(state == 3) // message
           {
-            if(mes_str_num == 0) event.message_text = as_buf;
+            if(mes_str_num == 0)
+            {
+              if(i_ch > MESSAGE_ROW_SIZE) i_ch = MESSAGE_ROW_SIZE;
+              strncpy(event.caption,str,i_ch);
+              event.caption[i_ch] = 0;
+            }
             if(mes_str_num < event.cycle_flags.el.id_rfile)
             {
-              event.Message.push_back(as_buf); ++mes_str_num;
+              ++mes_str_num;
 
               if(mes_str_num == event.cycle_flags.el.id_rfile)   // end of event
               {
                 EList_push(&EList, &event);
-
-                MainForm->Memo1->Lines->Add("s rec: "+IntToStr(EList.size - 1));
-                MainForm->Memo1->Lines->Add("s rec: "+EList.last->event.message_text);
-                MainForm->Memo1->Lines->Add("s rec: "+EList.last->event.message_file);
-                k = EList.last->event.event_sign.all_signs;
-                MainForm->Memo1->Lines->Add("s rec: "+IntToStr(k));
 
                 state = 0;
               }
@@ -4375,7 +4381,15 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
 
       for(k=0; k < EList.size; k++)
       {
-        event = EList_get(&EList, k);
+        list_event = EList_get(&EList, k);
+
+        event.start_date = list_event.start_date;
+        event.start_time = list_event.start_time;
+        event.cycle_flags.all_flags = list_event.cycle_flags.all_flags;
+        event.event_sign.all_signs = list_event.event_sign.all_signs;
+        event.message_file = AnsiString(list_event.sound);
+        event.message_text = AnsiString(list_event.caption);
+
         TodayList.push_back(event);
       }
 

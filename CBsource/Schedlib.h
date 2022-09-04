@@ -12,6 +12,9 @@
 
 using namespace std;
 
+#define MESSAGE_ROW_SIZE  80
+#define SOUND_FILENAME_SIZE  80
+
 #define WD_MONDAY   0x1
 #define WD_TUESDAY  0x2
 #define WD_WEDNSDAY 0x4
@@ -79,20 +82,20 @@ typedef struct
       }el;
    }event_sign;
 
+ char* caption;
+ char* sound;
 
  #ifdef ENV_BORLAND_BUILDER
    AnsiString message_file;
    AnsiString message_text;
-
-
    vector <AnsiString> Message;
-
  #endif
 
 }t_Event;
 
 
 void InitEvent(t_Event * event);
+void InitEventEm(t_Event * event);
 
 int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed);
 
@@ -103,9 +106,6 @@ unsigned int CheckSchedule(vector <t_Event> & base);
                    t_Time in_time,
                    AnsiString * out_day,
                    AnsiString * out_time);
-//   int MomentToStr(t_Date &n_date, t_Time & n_time, AnsiString * text);
-
-
 #endif
 
 #endif // SHEDULE_LIB_HEADER

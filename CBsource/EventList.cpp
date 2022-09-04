@@ -11,21 +11,6 @@ unsigned int new_iter;
 #endif;
 
 
-T_EList* EList_new()
-{
-  T_EList* list;
-
-  list = (T_EList*) malloc(sizeof(T_EList));
-
-  if( list == NULL ) return NULL;
-
-  list->first = NULL;
-  list->last = NULL;
-  list->size = 0;
-
-  return list;
-}
-
 void EList_init(T_EList* list)
 {
   list->first = NULL;
@@ -63,6 +48,7 @@ void EList_free(T_EList* id_list)
 T_Item* EList_push(T_EList* id_list, t_Event* in_event)
 {
   T_Item* new_item;
+  char* p_char;
 
 #ifndef STAT_MEM
    new_item = (T_Item*) malloc(sizeof(T_Item));
@@ -82,10 +68,32 @@ T_Item* EList_push(T_EList* id_list, t_Event* in_event)
   new_item->event.cycle_flags.all_flags = in_event->cycle_flags.all_flags;
   new_item->event.event_sign.all_signs = in_event->event_sign.all_signs;
 
-#ifdef ENV_BORLAND_BUILDER
-   new_item->event.message_file = in_event->message_file;
-   new_item->event.message_text = in_event->message_text;
-#endif
+  p_char = (char *) malloc(MESSAGE_ROW_SIZE);
+  if( p_char == NULL )
+  {
+   #ifdef STAT_MEM
+      new_item = NULL;
+   #else
+      free(new_item);
+   #endif
+   return NULL;
+  }
+  new_item->event.caption = p_char;
+  strcpy(new_item->event.caption, in_event->caption);
+
+  p_char = (char *) malloc(SOUND_FILENAME_SIZE);
+  if( p_char == NULL )
+  {
+   free(new_item->event.caption);
+   #ifdef STAT_MEM
+      new_item = NULL;
+   #else
+      free(new_item);
+   #endif
+   return NULL;
+  }
+  new_item->event.sound = p_char;
+  strcpy(new_item->event.sound, in_event->sound);
 
   if(id_list->size ==0)
   {

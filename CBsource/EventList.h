@@ -23,7 +23,7 @@ typedef struct
 } T_EList;
 
 
-T_EList* EList_new();
+
 void EList_init(T_EList* list);
 
 void EList_free(T_EList* id_list);

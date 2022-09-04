@@ -56,6 +56,52 @@ void InitEvent(t_Event * event)
    event->Message.clear();
   }
 
+void InitEventEm(t_Event * event)
+{
+  char* p_char;
+
+  event->start_date.use_day = false;
+  event->start_date.use_month = false;
+  event->start_date.use_year = false;
+  event->start_date.use_weekly = false;
+
+  event->start_date.year = 0;
+  event->start_date.month = 0;
+  event->start_date.day = 0;
+  event->start_date.weekday=0;
+  event->start_date.exclusive_day=false;
+
+   //event->end_date = event->start_date;
+
+  event->start_time.hour = 0;
+  event->start_time.minute = 0;
+  event->start_time.second = 0;
+  event->start_time.use_hour = true;
+  event->start_time.use_minute = true;
+  event->start_time.use_second = false;
+
+     //event->end_time = event->start_time;
+   //event->pre_start_time = event->start_time;
+   //event->pre_end_time = event->start_time;
+
+
+  event->cycle_flags.all_flags = 0;
+  event->cycle_flags.el.id_event = -1;
+  event->cycle_flags.el.id_rfile = -1;
+  event->event_sign.all_signs = 0;
+  event->event_sign.el.ring_time = 10;
+
+  p_char = (char *) malloc(MESSAGE_ROW_SIZE);
+  p_char[0]=0;
+  event->caption = p_char;
+
+  p_char = (char *) malloc(SOUND_FILENAME_SIZE);
+  p_char[0]=0;
+  event->sound = p_char;
+}
+
+
+
 int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed)
  {
   TDateTime dt;
