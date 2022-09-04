@@ -1,6 +1,6 @@
 object MainForm: TMainForm
-  Left = 304
-  Top = 156
+  Left = 313
+  Top = 122
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = #1047#1074#1086#1085#1086#1082
@@ -1704,7 +1704,7 @@ object MainForm: TMainForm
                   Font.Height = -12
                   Font.Name = 'Arial'
                   Font.Style = [fsBold]
-                  ItemHeight = 15
+                  ItemHeight = 0
                   ParentFont = False
                   TabOrder = 2
                   OnChange = SigFilesChange
@@ -1903,12 +1903,12 @@ object MainForm: TMainForm
         Top = 0
         Width = 683
         Height = 414
-        ActivePage = PageRing
+        ActivePage = PageSetup
         Align = alClient
         MultiLine = True
         ScrollOpposite = True
         Style = tsFlatButtons
-        TabIndex = 1
+        TabIndex = 0
         TabOrder = 1
         TabWidth = 150
         object PageSetup: TTabSheet
@@ -1952,6 +1952,15 @@ object MainForm: TMainForm
               'UTC+11  '#1052#1072#1075#1072#1076#1072#1085
               'UTC+12  '#1050#1072#1084#1095#1072#1090#1082#1072)
           end
+          object Button1: TButton
+            Left = 24
+            Top = 320
+            Width = 75
+            Height = 25
+            Caption = 'Button1'
+            TabOrder = 2
+            OnClick = Button1Click
+          end
         end
         object PageRing: TTabSheet
           Caption = ' Ring '
@@ -1961,9 +1970,9 @@ object MainForm: TMainForm
             Top = 0
             Width = 675
             Height = 383
-            ActivePage = RignStatePage
+            ActivePage = RingHandPage
             Align = alClient
-            TabIndex = 0
+            TabIndex = 2
             TabOrder = 0
             TabPosition = tpBottom
             object RignStatePage: TTabSheet
@@ -2149,7 +2158,7 @@ object MainForm: TMainForm
                   Top = 24
                   Width = 105
                   Height = 24
-                  ItemHeight = 16
+                  ItemHeight = 0
                   TabOrder = 0
                   Text = 'COM -'
                 end

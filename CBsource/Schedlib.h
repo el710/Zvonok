@@ -92,9 +92,6 @@ typedef struct
 }t_Event;
 
 
-extern AnsiString MonthName[];
-
-
 void InitEvent(t_Event * event);
 
 int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed);

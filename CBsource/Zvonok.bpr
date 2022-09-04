@@ -6,7 +6,7 @@
     <PROJECT value="Zvonok.exe"/>
     <OBJFILES value="Zvonok.obj Unit1.obj Unit4.obj Schedlib.obj 
       ..\SerialCOMWIN\SerialCOM_WIN.obj ..\CRC32\crc32.obj 
-      ..\Ring_protocol\Ring_prot.obj"/>
+      ..\Ring_protocol\Ring_prot.obj EventList.obj"/>
     <RESFILES value="Zvonok.res"/>
     <IDLFILES value=""/>
     <IDLGENFILES value=""/>
@@ -65,6 +65,7 @@
       <FILE FILENAME="..\SerialCOMWIN\SerialCOM_WIN.cpp" FORMNAME="" UNITNAME="SerialCOM_WIN" CONTAINERID="CCompiler" DESIGNCLASS="" LOCALCOMMAND=""/>
       <FILE FILENAME="..\CRC32\crc32.cpp" FORMNAME="" UNITNAME="crc32" CONTAINERID="CCompiler" DESIGNCLASS="" LOCALCOMMAND=""/>
       <FILE FILENAME="..\Ring_protocol\Ring_prot.cpp" FORMNAME="" UNITNAME="Ring_prot" CONTAINERID="CCompiler" DESIGNCLASS="" LOCALCOMMAND=""/>
+      <FILE FILENAME="EventList.cpp" FORMNAME="" UNITNAME="EventList" CONTAINERID="CCompiler" DESIGNCLASS="" LOCALCOMMAND=""/>
   </FILELIST>
   <BUILDTOOLS>
   </BUILDTOOLS>

@@ -4,8 +4,10 @@
 
 #include "IniFiles.hpp"
 
-#pragma hdrstop
+#include "malloc.h"
 
+#pragma hdrstop
+             
 #include "Unit1.h"
 
 #include "Defines.h"
@@ -13,6 +15,8 @@
 #include "Ring_prot.h"
 #include "CRC32.h"
 #include "SerialCOM_WIN.h"
+
+#include "EventList.h"
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
@@ -50,6 +54,12 @@ enum IO_State {IDLE, SEND_COMM, SEND_BLOCK, GET_ANSWER, IO_ERROR};
 
 //====================================================================
 // ---------------------- interface ----------------
+
+AnsiString Months[] = {"января","февраля","марта", "апреля",
+                           "мая", "июня", "июля", "августа",
+                           "сентября", "октября", "ноября", "декабря"};
+
+
 AnsiString WeekFDay[] = {"Понедельник",
                          "Вторник",
                          "Среда",
@@ -57,20 +67,7 @@ AnsiString WeekFDay[] = {"Понедельник",
                          "Пятница",
                          "Суббота",                                
                          "Воскресенье"};
-/*
-AnsiString MonthName[] = {"января",
-                          "февраля",
-                          "марта",
-                          "апреля",
-                          "мая",
-                          "июня",
-                          "июля",
-                          "августа",
-                          "сентября",
-                          "октября",
-                          "ноября",
-                          "декабря"};
- */
+
 
 // ------------- control time choice
 bool fix_inc_hour, fix_dec_hour, fix_inc_min, fix_dec_min;
@@ -147,7 +144,7 @@ void NowString(AnsiString & date,AnsiString & time)
 
 // if(n_mon < 10) str_date=str_date+".0"+IntToStr(n_mon)+"."+IntToStr(n_year);
 //   else str_date=str_date+"."+IntToStr(n_mon)+"."+IntToStr(n_year);
- str_date = str_date + " " + MonthName[n_mon-1] + " " + IntToStr(n_year);
+ str_date = str_date + " " + Months[n_mon-1] + " " + IntToStr(n_year);
 
  str_date=str_date+" "+WeekFDay[n_wd];
 
@@ -4201,4 +4198,187 @@ void __fastcall TMainForm::Is_selebMouseDown(TObject *Sender,
 }
 //---------------------------------------------------------------------------
 
+
+void __fastcall TMainForm::Button1Click(TObject *Sender)
+{
+  AnsiString as_buf;
+
+  TFileStream  * tfile;
+  char* virtual_file;
+  unsigned int point;
+
+  T_EList EList;
+
+  t_Event event;
+  t_Event* p_event;
+
+  T_Item* p_item;
+
+  char str[250]={0};
+  int i_ch=0;
+  unsigned short state = 0; // new record
+
+  unsigned short mes_str_num;
+  unsigned int num;
+  unsigned short j,k;
+
+  MainForm->Memo1->Lines->Clear();
+
+  tfile=new TFileStream(WorkScheduleFile,fmOpenReadWrite);
+
+  if(tfile->Size == 0)
+  {
+    tfile->Free();
+    MainForm->Memo1->Lines->Add("Ошибка открытия файла");
+  }
+  else
+  {
+    tfile->Seek(0,0);
+    virtual_file = (char *) malloc(tfile->Size);
+
+    if( virtual_file == NULL )
+    {
+      tfile->Free();
+      MainForm->Memo1->Lines->Add("Ошибка выделения памяти virtual_file");
+    }
+    else
+    {
+      tfile->Read(virtual_file,tfile->Size);
+      MainForm->Memo1->Lines->Add("Get virtual_file");
+
+      //EList = EList_new();
+      EList_init(&EList);
+      MainForm->Memo1->Lines->Add("Make List: "+IntToHex((int)(&EList),8));
+
+      TodayList.clear();
+
+      point = 0; state = 0;
+      while(point < tfile->Size)
+      {
+        // read string
+        i_ch = 0;
+        while(   virtual_file[point] != 0x0A
+              && point < tfile->Size
+              && i_ch < 256)
+        {
+         str[i_ch] = virtual_file[point];
+         i_ch++;
+         point++;
+        }
+
+        if(virtual_file[point] == 0x0A) point++;
+
+        str[i_ch] = 0;
+        as_buf = AnsiString(str);
+        as_buf = "line: " + as_buf.SubString(0,i_ch);
+        MainForm->Memo1->Lines->Add(as_buf);
+
+        if(str[0] == 0x23)
+        {
+         // new record
+         InitEvent(&event); state = 1;
+        }
+        else
+        {
+          if(state == 1)  // event
+          {
+            j=0;
+            for(k=0; k<DEF_PARAMETERS_COUNT; k++)
+            {
+              num=0;
+              while(str[j] != 0x20)
+              {
+                num = (num * 10) + (str[j] - 0x30);
+                j++;
+              }
+              j++;
+
+              switch (k)
+              {
+                case 0: { event.start_date.year = num; break; }
+                case 1: { event.start_date.month = num; break; }
+                case 2: { event.start_date.day  = num; break; }
+                case 3: { event.start_date.weekday = num; break; }
+                case 4: { event.start_date.use_year = (num == 1); break; }
+                case 5: { event.start_date.use_month = (num == 1); break; }
+                case 6: { event.start_date.use_day = (num == 1); break; }
+                case 7: { event.start_date.use_weekly = (num == 1); break; }
+                case 8: { event.start_date.exclusive_day = (num == 1); break; }
+                case 9: { event.start_time.use_hour = (num == 1); break; }
+                case 10: { event.start_time.use_minute = (num == 1); break; }
+                case 11: { event.start_time.use_second = (num == 1); break; }
+                case 12: { event.start_time.hour = num; break; }
+                case 13: { event.start_time.minute = num; break; }
+                case 14: { event.start_time.second = num; break; }
+                case 15: { event.cycle_flags.all_flags = num; break; }
+                case 16: { event.event_sign.all_signs = num; break; }
+                case 17: { event.cycle_flags.el.id_rfile = num; break; }
+              }//switch
+            }//for k
+
+            state = 2;
+          }
+          else
+          if(state == 2) // sound file
+          {
+            event.message_file=as_buf;
+            if(FileExists(wdir+as_buf))
+            {
+              AddSoundList(wdir+as_buf);
+              event.event_sign.el.is_sound = 1;
+            }
+            else
+            {
+              event.message_file = "";
+              event.event_sign.el.is_sound = 0;
+            }
+
+            mes_str_num=0;
+            state = 3;
+          }
+          else
+          if(state == 3) // message
+          {
+            if(mes_str_num == 0) event.message_text = as_buf;
+            if(mes_str_num < event.cycle_flags.el.id_rfile)
+            {
+              event.Message.push_back(as_buf); ++mes_str_num;
+
+              if(mes_str_num == event.cycle_flags.el.id_rfile)   // end of event
+              {
+                EList_push(&EList, &event);
+
+                MainForm->Memo1->Lines->Add("s rec: "+IntToStr(EList.size - 1));
+                MainForm->Memo1->Lines->Add("s rec: "+EList.last->event.message_text);
+                MainForm->Memo1->Lines->Add("s rec: "+EList.last->event.message_file);
+                k = EList.last->event.event_sign.all_signs;
+                MainForm->Memo1->Lines->Add("s rec: "+IntToStr(k));
+
+                state = 0;
+              }
+            }
+          }//state 3
+        }// event data
+
+
+      }// while eofile
+
+      for(k=0; k < EList.size; k++)
+      {
+        event = EList_get(&EList, k);
+        TodayList.push_back(event);
+      }
+
+      ShowBase(TodayList);
+
+      EList_free(&EList);
+
+      free(virtual_file);
+      tfile->Free();
+    }
+  }
+
+
+}
+//---------------------------------------------------------------------------
 
