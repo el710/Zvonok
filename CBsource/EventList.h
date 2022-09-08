@@ -5,6 +5,9 @@
 #include "Schedlib.h"
 
 
+#define  EL_RES_OK          0
+#define  EL_RES_BASE_EMPTY  1
+
 typedef struct
 {
   t_Event event;
@@ -32,6 +35,13 @@ T_Item* EList_push(T_EList* id_list, t_Event* in_event);
 
 t_Event EList_get(T_EList* id_list, unsigned int in_num);
 
+int EList_ReadFile();
+int EList_SaveFile();
+
+
+int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed, bool* out_holyday);
+
+unsigned int CheckSchedule(vector <t_Event> & base);
 
 
 #endif //EVENTLIST_H

@@ -183,7 +183,7 @@ __published:	// IDE-managed Components
         TLabel *Label22;
         TLabel *Label23;
         TSpeedButton *ButStateRing;
-        TButton *Button1;
+        TButton *AltReadSchedule;
         void __fastcall Exit_menuClick(TObject *Sender);
         void __fastcall FormCreate(TObject *Sender);
         void __fastcall N2Click(TObject *Sender);
@@ -282,7 +282,7 @@ __published:	// IDE-managed Components
         void __fastcall ButStateRingClick(TObject *Sender);
         void __fastcall Is_selebMouseDown(TObject *Sender,
           TMouseButton Button, TShiftState Shift, int X, int Y);
-        void __fastcall Button1Click(TObject *Sender);
+        void __fastcall AltReadScheduleClick(TObject *Sender);
 private:	// User declarations
 public:		// User declarations
         __fastcall TMainForm(TComponent* Owner);

@@ -12,8 +12,6 @@
 
 #include "Defines.h"
 
-#include "Schedlib.h"
-
 #include "Ring_prot.h"
 #include "CRC32.h"
 #include "SerialCOM_WIN.h"
@@ -75,6 +73,7 @@ AnsiString WeekFDay[] = {"Понедельник",
 bool fix_inc_hour, fix_dec_hour, fix_inc_min, fix_dec_min;
 
 bool ShowToday;    // type of schedule to show
+bool IsHolyDay;
 
 
 //--------------- envirounment
@@ -463,7 +462,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
         {
           temp_list[0].Message.push_back(bs); ++k;
 
-          if(k == temp_list[0].cycle_flags.el.id_rfile )   // end of  file
+          if(k == temp_list[0].cycle_flags.el.id_rfile )   // end of  event text
           {
             BaseEvent.push_back(temp_list[0]);
             Founded_rec = 0;
@@ -2991,7 +2990,6 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
   MainForm->TabloTime->Caption = str_time;
 
   StartWork = true;
-  ShowToday =  true;
   DelNumEvent = -1;
 
   DeleteMode=false;
@@ -3020,9 +3018,10 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
   MainForm->CurrentBase->Cells[1][0] = "Добавьте событие...";
 #endif
 
-
-  if (SetTodaySchedule(BaseEvent,TodayList) !=0 )
+  if (SetTodaySchedule(BaseEvent,TodayList,&IsHolyDay) !=0 )
     MainForm->Memo1->Lines->Add("База событий пуста!");
+
+  ShowToday =  true;
   ShowBase(TodayList);
 
   RingAutoControl = true;
@@ -3448,7 +3447,7 @@ void __fastcall TMainForm::ButDialOkClick(TObject *Sender)
  BaseEvent.erase(BaseEvent.begin()+DelNumEvent);
 
  SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList);
+ SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
  RepaintBase();
 
 
@@ -3764,7 +3763,7 @@ void __fastcall TMainForm::ButSaveEventClick(TObject *Sender)
 {
  SaveEvent(false);
  SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList);
+ SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
  RepaintBase();
 
  MainForm->MediaPlayer1->Stop();  MainForm->MediaPlayer1->Close();
@@ -3814,7 +3813,7 @@ void __fastcall TMainForm::ButSaveasClick(TObject *Sender)
 {
  SaveEvent(true);
  SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList);
+ SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
  RepaintBase();
  MediaPlayer1->Stop();  MediaPlayer1->Close();
  PageControl1->ActivePage = SchedWin;
@@ -4216,7 +4215,7 @@ void __fastcall TMainForm::Is_selebMouseDown(TObject *Sender,
 //---------------------------------------------------------------------------
 
 
-void __fastcall TMainForm::Button1Click(TObject *Sender)
+void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
 {
   AnsiString as_buf;
 
@@ -4229,6 +4228,20 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
   t_Event event, list_event;
 
   T_Item* p_item;
+
+  unsigned short n_year, n_mon, n_day, n_wd;
+  unsigned short n_hour, n_min, n_sec, n_msec;
+  TDateTime dt;
+
+  bool check_holyday;
+  
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  dt.DecodeTime(&n_hour,&n_min,&n_sec,&n_msec);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
+
+
 
   char str[250]={0};
   int i_ch=0;
@@ -4376,12 +4389,32 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
           }//state 3
         }// event data
 
-
       }// while eofile
 
+      // check once in 24 hours
+      check_holyday = false;
       for(k=0; k < EList.size; k++)
       {
         list_event = EList_get(&EList, k);
+
+        // check is today Holyday
+        if(  (   list_event.start_date.day == n_day     // event day is today
+              && list_event.start_date.month == n_mon
+             )
+           ||(   list_event.start_date.use_weekly       // or event weekday
+              && list_event.start_date.weekday == n_wd  // is now
+             )
+          )
+          {
+            if(   check_holyday == false
+                && list_event.start_date.exclusive_day   // event is holyday
+              )
+              { IsHolyDay = true; check_holyday = true; }
+              else { IsHolyDay = false; }
+          }
+
+        //make today schedule
+
 
         event.start_date = list_event.start_date;
         event.start_time = list_event.start_time;
@@ -4392,8 +4425,8 @@ void __fastcall TMainForm::Button1Click(TObject *Sender)
 
         TodayList.push_back(event);
       }
-
       ShowBase(TodayList);
+
 
       EList_free(&EList);
 

@@ -130,7 +130,111 @@ t_Event EList_get(T_EList* id_list, unsigned int in_num)
 }
 
 
+int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed, bool* out_holyday)
+{
+  TDateTime dt;
+  unsigned short n_year, n_mon, n_day, n_wd, i;
+  bool found_holyday = false;
 
+  vector<t_Event>::iterator iter = base.begin();
+
+  dt=Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
+
+  if( base.empty() ) { return EL_RES_BASE_EMPTY; }
+
+  shed.clear();
+
+  while ( iter != base.end() )
+  {
+    // check is today Holyday
+    if(!found_holyday)
+    {
+      if(  (   iter->start_date.day == n_day     // event day is today
+            && iter->start_date.month == n_mon
+           )
+         ||(   iter->start_date.use_weekly       // or event weekday
+            && iter->start_date.weekday == n_wd  // is now
+           )
+        )
+        {
+          if(iter->start_date.exclusive_day) found_holyday = true;  // event is holyday
+        }
+    }
+
+
+        if( !iter->start_date.use_year || (iter->start_date.year == n_year) ) // every year or in this year
+          {
+           if( !iter->start_date.use_month || (iter->start_date.month == n_mon) )
+             {
+              if( !iter->start_date.use_day || (iter->start_date.day == n_day) )
+                {
+                 if( !iter->start_date.use_day)
+                   {
+                    if(iter->start_date.use_weekly)
+                      {
+                       for(i=0;i<7;i++)   // week-day
+                       {
+                        if( (iter->start_date.weekday & (1 << i)) != 0 )
+                          {
+                           if(n_wd == i)
+                             {
+                              shed.push_back(*iter); break;
+                             }
+                          }
+                       }//for
+                      }// weekly
+                      else
+                      {
+                       shed.push_back(*iter);
+                      }
+                   } //not day
+                   else shed.push_back(*iter);
+                }// every day or in this day
+             }// every month or in this month
+          }// every year or in this year
+        ++iter;
+       }
+
+   *out_holyday = found_holyday;
+   return EL_RES_OK;
+ }
+
+unsigned int CheckSchedule(vector <t_Event> & base)
+{
+ TDateTime dt;
+ unsigned short n_hour, n_min, n_sec, n_msec;
+ int  find;
+
+ dt=Now();
+ dt.DecodeTime(&n_hour,&n_min,&n_sec, &n_msec);
+
+ vector<t_Event>::iterator iter = base.begin();
+
+  find = 0;
+
+  if( base.empty() )
+    {
+     return -1;
+    }
+    else
+    {
+     while ( iter != base.end() )
+       {
+        if (iter->cycle_flags.el.is_showed ==0 )
+          {
+           if ((iter->start_time.hour == n_hour) && (iter->start_time.minute == n_min))
+             return find;
+          }
+        ++iter;
+        ++find;
+       }// while
+    }
+
+ return -1;
+}
 
 
 

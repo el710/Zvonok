@@ -1,10 +1,10 @@
 object MainForm: TMainForm
   Left = 313
-  Top = 122
+  Top = 123
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = #1047#1074#1086#1085#1086#1082
-  ClientHeight = 527
+  ClientHeight = 526
   ClientWidth = 691
   Color = clAqua
   Font.Charset = RUSSIAN_CHARSET
@@ -24,7 +24,7 @@ object MainForm: TMainForm
     Left = 0
     Top = 0
     Width = 691
-    Height = 506
+    Height = 505
     ActivePage = SetupWin
     Align = alClient
     Font.Charset = RUSSIAN_CHARSET
@@ -151,7 +151,7 @@ object MainForm: TMainForm
       end
       object BottomPanel: TPanel
         Left = 0
-        Top = 387
+        Top = 386
         Width = 683
         Height = 90
         Align = alBottom
@@ -431,7 +431,7 @@ object MainForm: TMainForm
         Left = 0
         Top = 81
         Width = 683
-        Height = 306
+        Height = 305
         Align = alClient
         Caption = 'MidPanel'
         TabOrder = 2
@@ -524,7 +524,7 @@ object MainForm: TMainForm
       ImageIndex = 1
       object Panel1: TPanel
         Left = 0
-        Top = 414
+        Top = 413
         Width = 683
         Height = 63
         Align = alBottom
@@ -681,7 +681,7 @@ object MainForm: TMainForm
         Left = 177
         Top = 0
         Width = 506
-        Height = 414
+        Height = 413
         Align = alClient
         Color = clAqua
         TabOrder = 1
@@ -707,7 +707,7 @@ object MainForm: TMainForm
           Left = 1
           Top = 73
           Width = 504
-          Height = 340
+          Height = 339
           Align = alClient
           Caption = 'Panel5'
           Color = clAqua
@@ -716,7 +716,7 @@ object MainForm: TMainForm
             Left = 1
             Top = 1
             Width = 502
-            Height = 338
+            Height = 337
             Align = alClient
             Caption = 'Panel8'
             Color = clCream
@@ -725,7 +725,7 @@ object MainForm: TMainForm
               Left = 1
               Top = 1
               Width = 500
-              Height = 336
+              Height = 335
               ActivePage = SignalTab
               Align = alClient
               TabIndex = 4
@@ -914,7 +914,7 @@ object MainForm: TMainForm
                 ImageIndex = 1
                 DesignSize = (
                   492
-                  305)
+                  304)
                 object DayBack: TSpeedButton
                   Left = 8
                   Top = 216
@@ -1752,7 +1752,7 @@ object MainForm: TMainForm
         Left = 0
         Top = 0
         Width = 177
-        Height = 414
+        Height = 413
         Align = alLeft
         Caption = 'Panel10'
         TabOrder = 2
@@ -1775,7 +1775,7 @@ object MainForm: TMainForm
       ImageIndex = 2
       object Panel3: TPanel
         Left = 0
-        Top = 414
+        Top = 413
         Width = 683
         Height = 63
         Align = alBottom
@@ -1902,7 +1902,7 @@ object MainForm: TMainForm
         Left = 0
         Top = 0
         Width = 683
-        Height = 414
+        Height = 413
         ActivePage = PageSetup
         Align = alClient
         MultiLine = True
@@ -1952,14 +1952,14 @@ object MainForm: TMainForm
               'UTC+11  '#1052#1072#1075#1072#1076#1072#1085
               'UTC+12  '#1050#1072#1084#1095#1072#1090#1082#1072)
           end
-          object Button1: TButton
+          object AltReadSchedule: TButton
             Left = 24
             Top = 320
-            Width = 75
+            Width = 137
             Height = 25
-            Caption = 'Button1'
+            Caption = 'AltReadSchedule'
             TabOrder = 2
-            OnClick = Button1Click
+            OnClick = AltReadScheduleClick
           end
         end
         object PageRing: TTabSheet
@@ -1969,7 +1969,7 @@ object MainForm: TMainForm
             Left = 0
             Top = 0
             Width = 675
-            Height = 383
+            Height = 382
             ActivePage = RingHandPage
             Align = alClient
             TabIndex = 2
@@ -1979,10 +1979,10 @@ object MainForm: TMainForm
               Caption = 'RignStatePage'
               DesignSize = (
                 667
-                354)
+                353)
               object RingButton: TSpeedButton
                 Left = 17
-                Top = 265
+                Top = 264
                 Width = 121
                 Height = 33
                 Anchors = [akBottom]
@@ -1998,7 +1998,7 @@ object MainForm: TMainForm
               end
               object ButSound: TSpeedButton
                 Left = 179
-                Top = 265
+                Top = 264
                 Width = 121
                 Height = 33
                 Anchors = [akBottom]
@@ -2014,7 +2014,7 @@ object MainForm: TMainForm
               end
               object AlarmButton: TSpeedButton
                 Left = 347
-                Top = 265
+                Top = 264
                 Width = 121
                 Height = 33
                 Anchors = [akBottom]
@@ -2030,7 +2030,7 @@ object MainForm: TMainForm
               end
               object But_Fire: TSpeedButton
                 Left = 507
-                Top = 265
+                Top = 264
                 Width = 121
                 Height = 33
                 Anchors = [akBottom]
@@ -2345,7 +2345,7 @@ object MainForm: TMainForm
             Left = 0
             Top = 0
             Width = 675
-            Height = 383
+            Height = 382
             Align = alClient
             Lines.Strings = (
               'Manual')
@@ -2360,7 +2360,7 @@ object MainForm: TMainForm
             Left = 0
             Top = 0
             Width = 675
-            Height = 276
+            Height = 275
             Align = alClient
             Lines.Strings = (
               'Memo1')
@@ -2369,7 +2369,7 @@ object MainForm: TMainForm
           end
           object Memo2: TMemo
             Left = 0
-            Top = 276
+            Top = 275
             Width = 675
             Height = 66
             Align = alBottom
@@ -2380,7 +2380,7 @@ object MainForm: TMainForm
           end
           object Panel6: TPanel
             Left = 0
-            Top = 342
+            Top = 341
             Width = 675
             Height = 41
             Align = alBottom
@@ -2432,7 +2432,7 @@ object MainForm: TMainForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 506
+    Top = 505
     Width = 691
     Height = 21
     Panels = <

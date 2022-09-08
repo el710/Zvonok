@@ -97,10 +97,6 @@ typedef struct
 void InitEvent(t_Event * event);
 void InitEventEm(t_Event * event);
 
-int SetTodaySchedule(vector <t_Event> & base, vector <t_Event> & shed);
-
-unsigned int CheckSchedule(vector <t_Event> & base);
-
 #ifdef ENV_BORLAND_BUILDER
    int MomentToStr(t_Date in_date,
                    t_Time in_time,
