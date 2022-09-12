@@ -6,15 +6,35 @@
 
 #ifdef ENV_BORLAND_BUILDER
    #include <vcl.h>
-#endif
 
-#include <vector>
+   #include <vector>
 
-using namespace std;
+   using namespace std;
+#endif ENV_BORLAND_BUILDER
 
-#define MESSAGE_ROW_SIZE  80
-#define SOUND_FILENAME_SIZE  80
 
+//======== list of function's results
+#define  EL_RES_NO_EVENT     -1
+#define  EL_RES_OK           0
+#define  EL_RES_BASE_EMPTY   1
+#define  EL_RES_NULL_POINTER 2
+#define  EL_RES_NO_MEMORY    3
+
+
+//======== Scaling
+#define FILE_STRING_SIZE_MAX  256
+#define FILE_PARAMETERS_COUNT 18
+
+#define FILE_STRING_END_CHAR  0x0A
+#define FILE_RECORD_SEPARATOR 0x23
+#define FILE_PARAM_SEPARATOR  0x20
+#define ASCII_NUMBER_BASE     0x30
+
+#define MESSAGE_ROW_SIZE      80
+#define SOUND_FILENAME_SIZE   80
+
+
+//============ Event parameters & types
 #define WD_MONDAY   0x1
 #define WD_TUESDAY  0x2
 #define WD_WEDNSDAY 0x4
@@ -23,6 +43,20 @@ using namespace std;
 #define WD_SATURDAY 0x20
 #define WD_SUNDAY   0x40
 
+typedef struct
+{
+ unsigned year    :16;  // 0x270F
+ unsigned month   :4;   // 0xC
+ unsigned day     :5;   // 0x1F
+ unsigned weekday :7;   //  WD_MONDAY +... + WD_SUNDAY
+}s_Date;
+
+typedef struct
+{
+ unsigned hour   :5;  // 0x18
+ unsigned minute :6;
+ unsigned second :6;
+}s_Time;
 
 typedef struct
 {
@@ -37,25 +71,25 @@ typedef struct
  bool use_weekly:1;
  bool exclusive_day:1;     // this date is exclusive - for Example New Year Day
 
-}t_Date;
+}T_Date;
 
 typedef struct
 {
- bool use_hour;
- bool use_minute;
- bool use_second;
+ bool use_hour:1;
+ bool use_minute:1;
+ bool use_second:1;
 
- unsigned hour;  // 0x1F
- unsigned minute;
- unsigned second;
-}t_Time;
+ unsigned hour   :5;  // 0x18
+ unsigned minute :6;
+ unsigned second :6;
+}T_Time;
 
 
 typedef struct
 {
- t_Date start_date;
+ T_Date start_date;
 
- t_Time start_time;
+ T_Time start_time;
 
  union
    {
@@ -85,21 +119,55 @@ typedef struct
  char* caption;
  char* sound;
 
- #ifdef ENV_BORLAND_BUILDER
-   AnsiString message_file;
-   AnsiString message_text;
-   vector <AnsiString> Message;
- #endif
-
-}t_Event;
+}T_Event;
 
 
-void InitEvent(t_Event * event);
-void InitEventEm(t_Event * event);
+typedef struct
+{
+  T_Event event;
+
+  void* prev;
+  void* next;
+} T_ListItem;
+
+
+typedef struct
+{
+  T_ListItem* first;
+  T_ListItem* last;
+
+  unsigned int size;
+} T_EventList;
+
+
+//========= defines of functions
+
+int NewEvent(T_Event * event);  // make event structure
+void ZeroEvent(T_Event * event); // init event structure
+
+void EventList_init(T_EventList* list);  // init EventList variables
+void EventList_clear(T_EventList* id_list); // free items of EventList
+T_ListItem* EventList_push(T_EventList* id_list, T_Event* in_event);  // add new Item to List
+T_Event EventList_get(T_EventList* id_list, unsigned int in_num);  // take event from List by order number
+
+int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_list);
+
+int EventList_ReadFile();
+int EventList_SaveFile();
+
+int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
+                      T_EventList* out_today, bool* out_holyday);
+unsigned int CheckSchedule(T_EventList* in_base, s_Time* in_time);
+
+int SetTodaySchedule(vector <T_Event> & base, vector <T_Event> & shed, bool* out_holyday);
+
+unsigned int CheckSchedule(vector <T_Event> & base);
+
+
 
 #ifdef ENV_BORLAND_BUILDER
-   int MomentToStr(t_Date in_date,
-                   t_Time in_time,
+   int MomentToStr(T_Date in_date,
+                   T_Time in_time,
                    AnsiString * out_day,
                    AnsiString * out_time);
 #endif

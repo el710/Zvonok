@@ -16,7 +16,7 @@
 #include "CRC32.h"
 #include "SerialCOM_WIN.h"
 
-#include "EventList.h"
+#include "Schedlib.h"
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
@@ -86,9 +86,9 @@ TIniFile * ini_file;
 AnsiString WorkScheduleFile;
 
 //--------------- Schedule
-vector <t_Event> BaseEvent;  // all events
-vector <t_Event> TodayList;  // today events
-vector <t_Event> ViewList;   // edit day events
+vector <T_Event> BaseEvent;  // all events
+vector <T_Event> TodayList;  // today events
+vector <T_Event> ViewList;   // edit day events
 
 
 //--------------- work states
@@ -287,7 +287,7 @@ void SaveBase(AnsiString in_SchedFile)
  TFileStream * s_file;
  unsigned i;
 
- vector <t_Event>::iterator iter = BaseEvent.begin();
+ vector <T_Event>::iterator iter = BaseEvent.begin();
  vector <AnsiString>::iterator it_mess;
 
  if(!BaseEvent.empty())
@@ -319,15 +319,19 @@ void SaveBase(AnsiString in_SchedFile)
       rec = rec + IntToStr(iter->cycle_flags.all_flags) + " ";     // DEF_PARAMETERS_COUNT - 16
       rec = rec + IntToStr(iter->event_sign.all_signs) + " ";
 
-      it_mess = iter->Message.begin();
-      i = iter->Message.size();
+//      it_mess = iter->Message.begin();
+//      i = iter->Message.size();
+      i=1;
 
-      rec = rec + IntToStr(i) + " \n";                            // DEF_PARAMETERS_COUNT - 18
+      rec = rec + IntToStr(i) + "\n";                            // DEF_PARAMETERS_COUNT - 18
       s_file->Write(rec.c_str(),rec.Length());
 
-      rec = iter->message_file + "\n";
+      rec = AnsiString(iter->sound) + "\n";
       s_file->Write(rec.c_str(),rec.Length());
 
+      rec = AnsiString(iter->caption) + "\n";
+      s_file->Write(rec.c_str(),rec.Length());
+/*
       while(it_mess != iter->Message.end())
       {
 
@@ -336,10 +340,10 @@ void SaveBase(AnsiString in_SchedFile)
        ++it_mess;
       }
 
-
+ */
       ++iter;
      }
-    s_file->Free(); 
+    s_file->Free();
    }
 }
 //=========================================================
@@ -368,7 +372,7 @@ int AddSoundList(AnsiString & sound_file)
 }
 //=======================================================================
 
-unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_Event> & Base)
+unsigned int NONOpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <T_Event> & Base)
 {
   int i,j,k,reccount, wd, num, i_ch;
   unsigned int res;
@@ -381,6 +385,16 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
   t_OldActiveEvent active_rxx[7];
 
   char c_buf[100];
+
+
+  for(i=0; i<MAX_OLD_EVENTS+1; i++)
+  {
+    k = NewEvent(&temp_list[i]);
+    if(k == EL_RES_NO_MEMORY)
+    {
+      return  R_ALLOCMEM_ERROR;
+    }
+  }
 
   if( FileExists(in_SchedFile) ) // new format shedule
   {
@@ -399,13 +413,13 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
           BaseEvent.push_back(temp_list[0]);
         }
 
-        InitEvent(temp_list); correct_event = true; Founded_rec = 1;
+        ZeroEvent(temp_list); correct_event = true; Founded_rec = 1;
       }
       else
       if(correct_event && (Founded_rec==1))
       {
         wd=bs.Length();
-        for(k=0;k<DEF_PARAMETERS_COUNT;k++)
+        for(k=0;k<FILE_PARAMETERS_COUNT;k++)
         {
           j=bs.AnsiPos(" "); ws=bs.SubString(1,j-1);
           wd = wd-j; bs=bs.SubString(j+1,wd);
@@ -438,7 +452,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
       else
       if(correct_event && (Founded_rec==2))  // sound file
       {
-        temp_list[0].message_file=bs;
+        temp_list[0].sound = bs.c_str();
         ws = in_dir+bs;
         if(FileExists(ws))
         {
@@ -447,7 +461,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
         }
         else
         {
-          temp_list[0].message_file = "";
+          temp_list[0].sound[0] = 0;
           temp_list[0].event_sign.el.is_sound = 0;
         }
 
@@ -456,11 +470,11 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
       else
       if(correct_event && (Founded_rec==3))  // message
       {
-        if(k == 0 ) temp_list[0].message_text = bs;
+        if(k == 0 ) temp_list[0].caption = bs.c_str();
 
         if(k < temp_list[0].cycle_flags.el.id_rfile)
         {
-          temp_list[0].Message.push_back(bs); ++k;
+//          temp_list[0].Message.push_back(bs); ++k;
 
           if(k == temp_list[0].cycle_flags.el.id_rfile )   // end of  event text
           {
@@ -477,7 +491,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
   }
   else
   {
-    for(i=0;i<MAX_OLD_EVENTS;i++) InitEvent(&temp_list[i]);
+    for(i=0;i<MAX_OLD_EVENTS;i++) ZeroEvent(&temp_list[i]);
 
     k=0;
     Founded_rec = 0;
@@ -589,7 +603,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
                 {
                   str_buf = ExtractFileExt(ws);
                   if(str_buf == "") ws = ws+".mp3";
-                  temp_list[Founded_rec].message_file=ws;
+                  temp_list[Founded_rec].sound=ws.c_str();
                   str_buf = in_dir+ws;
 
                   if(FileExists(str_buf))
@@ -769,7 +783,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
 
           MainForm->Memo1->Lines->Add("Ex "+IntToStr(i+1)+" "+bs);
           correct_event=false;
-          InitEvent(&temp_list[MAX_OLD_EVENTS]);
+          ZeroEvent(&temp_list[MAX_OLD_EVENTS]);
 
           if(bs.Length()>=8)
           {
@@ -814,10 +828,10 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
 
             if(correct_event)
             {
-              temp_list[MAX_OLD_EVENTS].Message.clear();
-              temp_list[MAX_OLD_EVENTS].start_date.exclusive_day = 1;
-              temp_list[MAX_OLD_EVENTS].message_text = "Праздник";
-              temp_list[MAX_OLD_EVENTS].Message.push_back("Праздник");
+             temp_list[MAX_OLD_EVENTS].start_date.exclusive_day = 1;
+             strcpy(temp_list[MAX_OLD_EVENTS].caption, "Праздник");
+             
+             // temp_list[MAX_OLD_EVENTS].Message.push_back("Праздник");
               temp_list[MAX_OLD_EVENTS].event_sign.el.is_text = 1;
               temp_list[MAX_OLD_EVENTS].cycle_flags.el.is_event_active = 1;
               temp_list[MAX_OLD_EVENTS].start_time.use_hour = false;
@@ -837,16 +851,13 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
                 {
                   temp_list[MAX_OLD_EVENTS].start_time = temp_list[k].start_time;
                   temp_list[MAX_OLD_EVENTS].event_sign = temp_list[k].event_sign;
-                  if(temp_list[k].message_file != "")
+                  if(temp_list[k].sound[0] != 0)
                   {
-                    temp_list[MAX_OLD_EVENTS].message_file = temp_list[k].message_file;
+                    strcpy(temp_list[MAX_OLD_EVENTS].sound, temp_list[k].sound);
                     temp_list[MAX_OLD_EVENTS].event_sign.el.is_sound = 1;
                   }
 
-                  //temp_list[MAX_OLD_EVENTS].start_date.use_day = false;
-                  temp_list[MAX_OLD_EVENTS].Message.clear();
-                  temp_list[MAX_OLD_EVENTS].message_text = "Сигнал";
-                  temp_list[MAX_OLD_EVENTS].Message.push_back("Сигнал");
+                  strcpy(temp_list[MAX_OLD_EVENTS].caption, "Сигнал");
                   temp_list[MAX_OLD_EVENTS].event_sign.el.is_text = 1;
                   temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_event = Base.size();
                   Base.push_back(temp_list[MAX_OLD_EVENTS]);
@@ -875,8 +886,7 @@ unsigned int OpenSchedule(AnsiString in_dir, AnsiString in_SchedFile, vector <t_
       if(temp_list[k].cycle_flags.el.id_rfile != -1)
       {
         temp_list[k].start_date.use_day=false;
-        if (temp_list[k].message_text == "") temp_list[k].message_text=temp_list[k].message_file;
-        temp_list[k].Message.push_back(temp_list[k].message_text);
+        if (temp_list[k].caption[0] == 0) strcpy(temp_list[k].caption, temp_list[k].sound);
         temp_list[k].cycle_flags.el.id_event = Base.size();
 
         Base.push_back(temp_list[k]);
@@ -1045,13 +1055,13 @@ void ShowBase(vector <t_Event> & base)
         }
         MainForm->CurrentBase->Cells[0][CurRow] = str_date;
 
-        if(iter->message_text.Length() != 0)
+        if(iter->caption[0] != 0)
           {
-           MainForm->CurrentBase->Cells[1][CurRow] = iter->message_text;
+           MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(iter->caption);
           }
           else
             {
-             MainForm->CurrentBase->Cells[1][CurRow] = iter->message_file;
+             MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(iter->sound);
             }
         MainForm->CurrentBase->Cells[2][CurRow] = IntToStr(iter->cycle_flags.el.id_event);
 
@@ -2295,31 +2305,31 @@ int MakeEvent(t_Event* event)
   event->event_sign.el.is_sound = MainForm->Add_sound->Checked;
   if(MainForm->Add_sound->Checked)
   {
-    event->message_file = SoundFiles[MainForm->SigFiles->ItemIndex].full_name;
+    event->sound = SoundFiles[MainForm->SigFiles->ItemIndex].full_name.c_str();
   }
   else
   {
-    event->message_file = "";
+    event->sound[0] = 0;
   }
 
   event->event_sign.el.is_text = 1;
-  event->Message.clear();
+//  event->Message.clear();
   if(MainForm->Memo3->Lines->Count > 0)
   {
-    event->message_text = MainForm->Memo3->Lines->Strings[0];
-    event->Message.push_back(MainForm->Memo3->Lines->Strings[0]);
+    event->caption = MainForm->Memo3->Lines->Strings[0].c_str();
+  //  event->Message.push_back(MainForm->Memo3->Lines->Strings[0]);
   }
   else
   {
     if(MainForm->Add_sound->Checked)
     {
-      event->message_text = SoundFiles[MainForm->SigFiles->ItemIndex].file_name;
-      event->Message.push_back(SoundFiles[MainForm->SigFiles->ItemIndex].file_name);
+      event->caption = SoundFiles[MainForm->SigFiles->ItemIndex].file_name.c_str();
+    //  event->Message.push_back(SoundFiles[MainForm->SigFiles->ItemIndex].file_name);
     }
     else
     {
-      event->message_text = "???????";
-      event->Message.push_back("???????");
+      strcpy(event->caption, "событие");
+    //  event->Message.push_back("???????");
     }
   }
 
@@ -2416,7 +2426,7 @@ void ShowAddDialog()
  dt.DecodeDate(&n_year,&n_mon,&n_day);
  dt.DecodeTime(&n_hour,&n_min,&n_sec, &n_msec);
 
- InitEvent(&mem_event);
+ ZeroEvent(&mem_event);
  mem_event.start_date.use_day = true;
  mem_event.start_date.use_month = true;
  mem_event.start_date.use_year = false;
@@ -2513,7 +2523,7 @@ void ShowEditDialog(t_Event & in_event)
  SetAllControl(in_event);
 
  MainForm->Memo3->Clear();
- MainForm->Memo3->Lines->Add(in_event.message_text);
+ MainForm->Memo3->Lines->Add(AnsiString(in_event.caption));
  //MainForm->Memo3->SelStart = MainForm->Memo3->Perform(EM_LINEINDEX,0,0);
  MainForm->Memo3->CaretPos = Point(MainForm->Memo3->Lines[0].Text.Length()-1 ,0);
 
@@ -2527,10 +2537,10 @@ void ShowEditDialog(t_Event & in_event)
        ++iter;
       }
 
-    i =  GetIDSound(in_event.message_file);
+    i =  GetIDSound(AnsiString(in_event.sound));
     if(i >= 0)
       {
-       MainForm->SigFiles->Text = in_event.message_file;
+       MainForm->SigFiles->Text = AnsiString(in_event.sound);
        MainForm->SigFiles->ItemIndex = i;
       }
       else
@@ -2894,7 +2904,7 @@ void DoSignal(t_Event & base)
   MessWindow->Caption = "Событие: "+str_buf;
   MessWindow->Button->Caption = "Принято";
 
-  str_buf = base.message_text;
+  str_buf = AnsiString(base.caption);
   MessWindow->Memo1->Clear();
   MessWindow->Memo1->Lines->Add(str_buf);
 
@@ -2907,7 +2917,7 @@ void DoSignal(t_Event & base)
   if (MessWindow->MessPlayer->Mode == mpPlaying) MessWindow->MessPlayer->Stop();
   if((MessWindow->MessPlayer->Mode != mpPlaying) && (base.event_sign.el.is_sound == 1))
    {
-    str_buf = base.message_file;
+    str_buf = AnsiString(base.sound);
     if (FileExists(str_buf))
       {
        MessWindow->MessPlayer->FileName=str_buf;
@@ -4221,35 +4231,34 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
 
   TFileStream  * tfile;
   char* virtual_file;
-  unsigned int point;
 
-  T_EList EList;
 
-  t_Event event, list_event;
+  T_EventList BaseEventList, TodayEvList;
 
-  T_Item* p_item;
+  t_Event event;
+  s_Date b_date;
+  s_Time b_time;
 
+  unsigned short k;
   unsigned short n_year, n_mon, n_day, n_wd;
   unsigned short n_hour, n_min, n_sec, n_msec;
   TDateTime dt;
 
-  bool check_holyday;
-  
+
   dt = Now();
   dt.DecodeDate(&n_year,&n_mon,&n_day);
   dt.DecodeTime(&n_hour,&n_min,&n_sec,&n_msec);
   n_wd = dt.DayOfWeek();
   if(n_wd == 1) n_wd = 6; else n_wd -=2;
 
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
 
-
-  char str[250]={0};
-  int i_ch=0;
-  unsigned short state = 0; // new record
-
-  unsigned short mes_str_num;
-  unsigned int num;
-  unsigned short j,k;
+  b_time.hour = n_hour;
+  b_time.minute = n_min;
+  b_time.second = n_sec;
 
   MainForm->Memo1->Lines->Clear();
 
@@ -4275,160 +4284,27 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
       tfile->Read(virtual_file,tfile->Size);
       MainForm->Memo1->Lines->Add("Get virtual_file");
 
-      EList_init(&EList);
-      MainForm->Memo1->Lines->Add("Make List: "+IntToHex((int)(&EList),8));
+      EventList_init(&BaseEventList);
+      EventList_init(&TodayEvList);
 
-      TodayList.clear();
-
-      InitEventEm(&event);
-
-      point = 0; state = 0;
-      while(point < tfile->Size)
-      {
-        // read string
-        i_ch = 0;
-        while(   virtual_file[point] != 0x0A
-              && point < tfile->Size
-              && i_ch < 256)
-        {
-         str[i_ch] = virtual_file[point];
-         i_ch++;
-         point++;
-        }
-
-        if(virtual_file[point] == 0x0A) point++;
-
-        str[i_ch] = 0;
-        as_buf = AnsiString(str);
-        as_buf = "line: " + as_buf.SubString(0,i_ch);
-        MainForm->Memo1->Lines->Add(as_buf);
-
-        if(str[0] == 0x23)
-        {
-         // new record
-         state = 1;
-        }
-        else
-        {
-          if(state == 1)  // event
-          {
-            j=0;
-            for(k=0; k<DEF_PARAMETERS_COUNT; k++)
-            {
-              num=0;
-              while(str[j] != 0x20)
-              {
-                num = (num * 10) + (str[j] - 0x30);
-                j++;
-              }
-              j++;
-
-              switch (k)
-              {
-                case 0: { event.start_date.year = num; break; }
-                case 1: { event.start_date.month = num; break; }
-                case 2: { event.start_date.day  = num; break; }
-                case 3: { event.start_date.weekday = num; break; }
-                case 4: { event.start_date.use_year = (num == 1); break; }
-                case 5: { event.start_date.use_month = (num == 1); break; }
-                case 6: { event.start_date.use_day = (num == 1); break; }
-                case 7: { event.start_date.use_weekly = (num == 1); break; }
-                case 8: { event.start_date.exclusive_day = (num == 1); break; }
-                case 9: { event.start_time.use_hour = (num == 1); break; }
-                case 10: { event.start_time.use_minute = (num == 1); break; }
-                case 11: { event.start_time.use_second = (num == 1); break; }
-                case 12: { event.start_time.hour = num; break; }
-                case 13: { event.start_time.minute = num; break; }
-                case 14: { event.start_time.second = num; break; }
-                case 15: { event.cycle_flags.all_flags = num; break; }
-                case 16: { event.event_sign.all_signs = num; break; }
-                case 17: { event.cycle_flags.el.id_rfile = num; break; }
-              }//switch
-            }//for k
-
-            state = 2;
-          }
-          else
-          if(state == 2) // sound file
-          {
-            if(i_ch == 0)
-            {
-              event.event_sign.el.is_sound = 0;
-            }
-            else
-            {
-              if(i_ch > SOUND_FILENAME_SIZE) i_ch = SOUND_FILENAME_SIZE;
-              strncpy(event.sound,str,i_ch);
-              event.sound[i_ch] = 0;
-              event.event_sign.el.is_sound = 1;
-            }
-
-            mes_str_num=0;
-            state = 3;
-          }
-          else
-          if(state == 3) // message
-          {
-            if(mes_str_num == 0)
-            {
-              if(i_ch > MESSAGE_ROW_SIZE) i_ch = MESSAGE_ROW_SIZE;
-              strncpy(event.caption,str,i_ch);
-              event.caption[i_ch] = 0;
-            }
-            if(mes_str_num < event.cycle_flags.el.id_rfile)
-            {
-              ++mes_str_num;
-
-              if(mes_str_num == event.cycle_flags.el.id_rfile)   // end of event
-              {
-                EList_push(&EList, &event);
-
-                state = 0;
-              }
-            }
-          }//state 3
-        }// event data
-
-      }// while eofile
+      EventList_ReadMem(virtual_file, tfile->Size, &BaseEventList);
 
       // check once in 24 hours
-      check_holyday = false;
-      for(k=0; k < EList.size; k++)
+      MakeTodaySchedule(&BaseEventList, &b_date, &TodayEvList, &IsHolyDay);
+
+      // check in every minute
+      k =  CheckSchedule(&TodayEvList, &b_time);
+
+      TodayList.clear();
+      for(k=0; k < TodayEvList.size; k++)
       {
-        list_event = EList_get(&EList, k);
-
-        // check is today Holyday
-        if(  (   list_event.start_date.day == n_day     // event day is today
-              && list_event.start_date.month == n_mon
-             )
-           ||(   list_event.start_date.use_weekly       // or event weekday
-              && list_event.start_date.weekday == n_wd  // is now
-             )
-          )
-          {
-            if(   check_holyday == false
-                && list_event.start_date.exclusive_day   // event is holyday
-              )
-              { IsHolyDay = true; check_holyday = true; }
-              else { IsHolyDay = false; }
-          }
-
-        //make today schedule
-
-
-        event.start_date = list_event.start_date;
-        event.start_time = list_event.start_time;
-        event.cycle_flags.all_flags = list_event.cycle_flags.all_flags;
-        event.event_sign.all_signs = list_event.event_sign.all_signs;
-        event.message_file = AnsiString(list_event.sound);
-        event.message_text = AnsiString(list_event.caption);
-
+        event = EventList_get(&TodayEvList, k);
         TodayList.push_back(event);
       }
       ShowBase(TodayList);
 
-
-      EList_free(&EList);
+      EventList_clear(&BaseEventList);
+      EventList_clear(&TodayEvList);
 
       free(virtual_file);
       tfile->Free();

@@ -34,8 +34,6 @@ typedef enum { SUP_IS_COMM,          //1 - наличие СОМ портов
                SUP_RING_SCHED_NO,
                SUP_RING_SCHED_MEM,
 
-
-
                SUPPORT_PLAN_SIZE
              }T_SUP_STEPS;
 
@@ -158,7 +156,7 @@ typedef union
 
 //-----------------------------------
 //----------- EVENTS
-#define DEF_PARAMETERS_COUNT    18
+
 
 #define MAX_OLD_EVENTS    365 //(26*14)
 
