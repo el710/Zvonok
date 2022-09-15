@@ -4215,7 +4215,7 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
 
   T_EventList BaseEventList, TodayEvList;
 
-  Ti_Event event;
+  t_Event event;
   s_Date b_date;
   s_Time b_time;
 

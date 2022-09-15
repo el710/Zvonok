@@ -319,8 +319,7 @@ int EventList_ReadFile(const char* in_SchedFile, T_EventList* out_base)
     fclose(tfile);
     return EL_RES_ALLOCMEM_ERROR;
   }
-  
-  fseek(tfile, 0, 0);
+
   for(i=0; i<fsize; i++)
   {
    ch = fgetc(tfile);

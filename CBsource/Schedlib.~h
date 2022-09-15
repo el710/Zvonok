@@ -155,7 +155,7 @@ Ti_Event EventList_get(T_EventList* id_list, unsigned int in_num);  // take even
 
 int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_list);
 
-int EventList_ReadFile(const char* in_SchedFile, T_EventList* out_base);
+int EventList_ReadFile();
 int EventList_SaveFile();
 
 int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,

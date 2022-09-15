@@ -9,22 +9,21 @@
 //------  Support plan
 
 
-typedef enum { SUP_IS_COMM,          //0 - наличие СОМ портов
-               SUP_DEF_COMM,         //1 -
-               SUP_IS_MANUAL,        //2 -
-               SUP_IS_SETUP,         //3 -
-               SUP_FREAD_SETUP,      //4 -  ошибки чтения файла настроек
-               SUP_IS_DALARM_FILE,   //5 -
-               SUP_IS_UALARM_FILE,   //6 -
-               SUP_IS_DFIRE_FILE,    //7 -
-               SUP_IS_UFIRE_FILE,    //8 -
-               SUP_IS_DRING_FILE,    //9 -
-               SUP_IS_URING_FILE,    //10 -
-               SUP_IS_RSCHED_FILE,   //11 -
-               SUP_IS_DSCHED_FILE,   //12 -
-               SUP_IS_EXSCHED_FILE,  //13 -
-               SUP_IS_SCHED_FILE,    //14 -
-               SUP_SCHED_EMPTY,
+typedef enum { SUP_IS_COMM,          //1 - наличие СОМ портов
+               SUP_DEF_COMM,         //2 -
+               SUP_IS_MANUAL,        //3 -
+               SUP_IS_SETUP,         //4 -
+               SUP_FREAD_SETUP,      //5 -  ошибки чтения файла настроек
+               SUP_IS_DALARM_FILE,   //6 -
+               SUP_IS_UALARM_FILE,   //7 -
+               SUP_IS_DFIRE_FILE,    //8 -
+               SUP_IS_UFIRE_FILE,    //9 -
+               SUP_IS_DRING_FILE,    //10 -
+               SUP_IS_URING_FILE,    //11 -
+               SUP_IS_RSCHED_FILE,   //12 -
+               SUP_IS_DSCHED_FILE,   //13 -
+               SUP_IS_EXSCHED_FILE,  //14 -
+               SUP_IS_SCHED_FILE,    //15 -
 
                SUP_RING_NO_ANSWER,
                SUP_RING_SETUP,
@@ -53,8 +52,6 @@ AnsiString SupMess[] = { "СOM порты не обнаружены. Проверьте подключение.",
                          "Файл расписания не найден (day)",
                          "Файл исключений не найден (ex)",
                          "Файл расписания не найден",
-                         "Файл расписания пуст",
-                         
                          "RING: нет связи",
                          "RING: режим настройки",
                          "RING: RTC не обнаружены",
