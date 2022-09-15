@@ -1,6 +1,8 @@
 //---------------------------------------------------------------------------
 
 #include <vcl.h>
+#include <vector>
+using namespace std;
 
 #include "IniFiles.hpp"
 
@@ -17,6 +19,8 @@
 #include "SerialCOM_WIN.h"
 
 #include "Schedlib.h"
+
+
 
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
@@ -72,7 +76,8 @@ AnsiString WeekFDay[] = {"Понедельник",
 // ------------- control time choice
 bool fix_inc_hour, fix_dec_hour, fix_inc_min, fix_dec_min;
 
-bool ShowToday;    // type of schedule to show
+bool ShowToday;    // flag to show Today Schedule
+bool NewDayCheck;  // flag to check days change
 bool IsHolyDay;
 
 
@@ -90,7 +95,10 @@ vector <Ti_Event> BaseEvent;  // all events
 vector <Ti_Event> TodayList;  // today events
 vector <Ti_Event> ViewList;   // edit day events
 
-T_EventList BaseEventList;
+T_EventList BaseEventList;   // all events
+T_EventList TodayEventList;  // today events
+T_EventList EditEventList;   // edit day events
+T_EventList ViewEventList;   // view day events
 
 //--------------- work states
 bool StartWork; // init period for timer
@@ -412,7 +420,7 @@ unsigned int OpenSchedule(AnsiString in_SchedFile, T_EventList* out_base)
 //=======================================================================
 
 
-unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
+unsigned int OpenOldSchedule(AnsiString in_SchedFile, T_EventList* out_base)
 {
   int i,j,k,reccount, wd, num, i_ch;
   unsigned int res;
@@ -431,6 +439,8 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
     if(k == EL_RES_ALLOCMEM_ERROR) return R_ALLOCMEM_ERROR;
     InitEvent(&temp_list[i]);
   }
+
+  EventList_clear(out_base);
 
   k=0;
   Founded_rec = 0;
@@ -774,9 +784,9 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
         temp_list[MAX_OLD_EVENTS].start_time.use_hour = false;
         temp_list[MAX_OLD_EVENTS].start_time.use_minute = false;
         temp_list[MAX_OLD_EVENTS].start_time.use_second = false;
-        temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_event = Base.size();
+        temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_event = out_base->size;
 
-        Base.push_back(temp_list[MAX_OLD_EVENTS]);
+        EventList_push(out_base,&temp_list[MAX_OLD_EVENTS]);
         MainForm->Memo1->Lines->Add("Add Ex "+bs+" to Base");
 
         if(temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_rfile != -1)
@@ -790,7 +800,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
               temp_list[MAX_OLD_EVENTS].event_sign = temp_list[k].event_sign;
               temp_list[MAX_OLD_EVENTS].event_sign.el.is_text = 1;
               temp_list[MAX_OLD_EVENTS].cycle_flags.el.even_in_exclusive = 1;
-              temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_event = Base.size();
+              temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_event = out_base->size;
 
               if(temp_list[k].sound[0] != 0)
               {
@@ -801,7 +811,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
               if(temp_list[MAX_OLD_EVENTS].caption != NULL)
                 strcpy(temp_list[MAX_OLD_EVENTS].caption, "Сигнал");
 
-              Base.push_back(temp_list[MAX_OLD_EVENTS]);
+              EventList_push(out_base, &temp_list[MAX_OLD_EVENTS]);
               MainForm->Memo1->Lines->Add("Add event of Ex "+bs+" to Base");
             }
           }// for k events
@@ -827,16 +837,16 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, vector <Ti_Event> & Base)
     {
       temp_list[k].start_date.use_day=false;
       if (temp_list[k].caption[0] == 0) strcpy(temp_list[k].caption, temp_list[k].sound);
-      temp_list[k].cycle_flags.el.id_event = Base.size();
+      temp_list[k].cycle_flags.el.id_event = out_base->size;
 
-      Base.push_back(temp_list[k]);
+      EventList_push(out_base, &temp_list[k]);
       MainForm->Memo1->Lines->Add("Add event "+IntToStr(k+1)+" to Base");
-      MainForm->Memo1->Lines->Add("Size of Base "+IntToStr(Base.size()));
+      MainForm->Memo1->Lines->Add("Size of Base "+IntToStr(out_base->size));
     }
   }// for k events
 
   SaveBase(in_SchedFile);
-  MainForm->Memo1->Lines->Add("Size of BaseEvent "+IntToStr(Base.size()));
+  MainForm->Memo1->Lines->Add("Size of BaseEvent "+IntToStr(out_base->size));
 
   for(i=0; i<MAX_OLD_EVENTS+1; i++)
   {
@@ -964,65 +974,72 @@ unsigned int OpenFiles(T_SoundFiles * set)
 //=========================================================
 
 
-void ShowBase(vector <Ti_Event> & base)
+void ShowBase(T_EventList* in_list, AnsiString in_date)
 {
- int i, CurRow, c_f, c_e;
- AnsiString str_date, str_time, str_buf;
+  int i, CurRow;
+  AnsiString str_date, str_time, str_buf;
+  T_ListItem* item;
 
- vector<Ti_Event>::iterator iter = base.begin();
-
-  if( ! base.empty() )
-    {
-     i=base.size();
 #ifdef GRID_TITLE
-     MainForm->CurrentBase->RowCount = i+1;
-     CurRow=1;
+   MainForm->CurrentBase->RowCount = 2;
+   MainForm->CurrentBase->Cells[1][0] = "События на: " + in_date;
 #else
-     MainForm->CurrentBase->RowCount = i;
-     CurRow=0;
+   MainForm->CurrentBase->RowCount = 1;
 #endif
 
-     while ( iter != base.end() )
-       {
-        MomentToStr(iter->start_date, iter->start_time, &str_date, &str_time);
-        if(str_date != "")
-        {
-          if(str_time != "") str_date = str_date+" - "+str_time;
-        }
-        else
-        {
-          if(str_time != "") { str_date = str_time; }
-        }
-        MainForm->CurrentBase->Cells[0][CurRow] = str_date;
-
-        if(iter->caption[0] != 0)
-          {
-           MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(iter->caption);
-          }
-          else
-            {
-             MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(iter->sound);
-            }
-        MainForm->CurrentBase->Cells[2][CurRow] = IntToStr(iter->cycle_flags.el.id_event);
-
-        ++CurRow;
-        ++iter;
-       } // while
-    }
-    else
-    {
+  if( in_list->size > 0)
+  {
 #ifdef GRID_TITLE
-     MainForm->CurrentBase->RowCount = 2;
+   MainForm->CurrentBase->RowCount = in_list->size + 1;
+   CurRow=1;
+#else
+   MainForm->CurrentBase->RowCount = in_list->size;
+   CurRow=0;
+#endif
+    item = in_list->first;
+    for(i=0; i<in_list->size; i++)
+    {
+      MomentToStr(item->event.start_date, item->event.start_time, &str_date, &str_time);
+
+      if(str_date != "")
+      {
+        if(str_time != "") str_date = str_date+" - "+str_time;
+      }
+      else
+      {
+        if(str_time != "") { str_date = str_time; }
+      }
+      MainForm->CurrentBase->Cells[0][CurRow] = str_date;
+
+      if(item->event.caption != NULL)
+      {
+        MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(item->event.caption);
+      }
+      else
+      {
+        if(item->event.sound != NULL)
+          MainForm->CurrentBase->Cells[1][CurRow] = AnsiString(item->event.sound);
+      }
+      MainForm->CurrentBase->Cells[2][CurRow] = IntToStr(item->event.cycle_flags.el.id_event);
+
+      ++CurRow;
+      item = (T_ListItem*)item->next;
+
+      if(item == NULL) break;
+    } // for
+  }
+  else
+  {
+#ifdef GRID_TITLE
      MainForm->CurrentBase->Cells[0][1] = "";
      MainForm->CurrentBase->Cells[1][1] = "Добавьте событие...";
      MainForm->CurrentBase->Cells[2][1] = "";
 #else
-     MainForm->CurrentBase->RowCount = 1;
      MainForm->CurrentBase->Cells[0][0] = "";
      MainForm->CurrentBase->Cells[1][0] = "Добавьте событие...";
      MainForm->CurrentBase->Cells[2][0] = "";
 #endif
-    }
+  }
 
 }
 //=========================================================
@@ -2915,11 +2932,32 @@ void __fastcall TMainForm::Exit_menuClick(TObject *Sender)
 void __fastcall TMainForm::FormCreate(TObject *Sender)
 {
   TDateTime dt;
-
   T_Result COMres;
-
   AnsiString ws, str_date, str_time;
   int i, j, res;
+
+  s_Date b_date;
+  s_Time b_time;
+
+  unsigned short n_year, n_mon, n_day, n_wd;
+  unsigned short n_hour, n_min, n_sec, n_msec;
+
+
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  dt.DecodeTime(&n_hour,&n_min,&n_sec,&n_msec);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
+
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
+
+  b_time.hour = n_hour;
+  b_time.minute = n_min;
+  b_time.second = n_sec;
+
 
 
   InitSupPlan();
@@ -2974,44 +3012,27 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
   res = OpenFiles(&UseSoundFiles);
 
   EventList_init(&BaseEventList);
+  EventList_init(&TodayEventList);  // today events
+  EventList_init(&EditEventList);   // edit day events
+  EventList_init(&ViewEventList);   // view day events
 
   if( FileExists(WorkScheduleFile) ) // new format shedule
   {
     res = OpenSchedule(WorkScheduleFile, &BaseEventList);
-
-// temporary
-Ti_Event event;
-for(i=0; i < BaseEventList.size; i++)
-{
-  event = EventList_get(&BaseEventList, i);
-  BaseEvent.push_back(event);
-}
-
   }
   else
   {
-    res = OpenOldSchedule(WorkScheduleFile, BaseEvent);
+    res = OpenOldSchedule(WorkScheduleFile, &BaseEventList);
   }
 
-
-
-
-
-#ifdef GRID_TITLE
- // MainForm->CurrentBase->Cells[0][0] = "Момент";
-  MainForm->CurrentBase->Cells[1][0] = "События на: " + str_date;
-  if ( BaseEvent.size() == 0 )
-    MainForm->CurrentBase->Cells[1][1] = "Добавьте событие...";
-#else
-  if ( BaseEvent.size() == 0 )
-  MainForm->CurrentBase->Cells[1][0] = "Добавьте событие...";
-#endif
-
-  if (SetTodaySchedule(BaseEvent,TodayList,&IsHolyDay) !=0 )
+  if( MakeTodaySchedule(&BaseEventList, &b_date, &TodayEventList, &IsHolyDay) == EL_RES_BASE_EMPTY)
+  {
     MainForm->Memo1->Lines->Add("База событий пуста!");
+  }
 
   ShowToday =  true;
-  ShowBase(TodayList);
+  NewDayCheck = true;
+  ShowBase(TodayList, str_date);
 
   RingAutoControl = true;
   if(MainForm->DefRingUnited->Checked)
@@ -3074,6 +3095,29 @@ void __fastcall TMainForm::Timer1Timer(TObject *Sender)
   int rec, NowEvent;
   AnsiString str_date, str_time;
 
+  TDateTime dt;
+  unsigned short n_year, n_mon, n_day, n_wd;
+  unsigned short n_hour, n_min, n_sec, n_msec;
+
+  s_Date b_date;
+  s_Time b_time;
+
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  dt.DecodeTime(&n_hour,&n_min,&n_sec,&n_msec);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
+
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
+
+  b_time.hour = n_hour;
+  b_time.minute = n_min;
+  b_time.second = n_sec;
+
+
 
   if( StartWork ) //first start
   {
@@ -3107,8 +3151,8 @@ void __fastcall TMainForm::Timer1Timer(TObject *Sender)
 
     if(!MessWindow->Visible)
     {
-      NowEvent = CheckSchedule(TodayList);
-      if( NowEvent != -1)
+      NowEvent = CheckSchedule(&TodayEventList, &b_time);
+      if( NowEvent != EL_RES_NO_EVENT)
       {
        Application->Restore();
        DoSignal(TodayList[NowEvent]);
@@ -3133,6 +3177,21 @@ void __fastcall TMainForm::Timer1Timer(TObject *Sender)
     }//CheckRingDelay
 
   } // work
+
+  // change TodayList at 00:00
+  if(n_hour == 0 && n_min == 0)
+  {
+    if(NewDayCheck)
+    {
+      MakeTodaySchedule(&BaseEventList, &b_date, &TodayEventList, &IsHolyDay);
+      if(ShowToday) ShowBase(TodayEventList);
+      NewDayCheck = false;
+    }
+  }
+  else
+  {
+    NewDayCheck = true;
+  }
 
 }
 //---------------------------------------------------------------------------
@@ -3457,18 +3516,20 @@ void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
   ViewList.clear();
   SoundFiles.clear();
 
- EventList_clear(&BaseEventList); 
+  EventList_clear(&BaseEventList);
+  EventList_clear(&TodayEventList);  // today events
+  EventList_clear(&EditEventList);   // edit day events
+  EventList_clear(&ViewEventList);   // view day events
 
- MainForm->Memo1->Lines->Clear();
- MainForm->Memo2->Lines->Clear();
- MainForm->Memo3->Lines->Clear();
+  MainForm->Memo1->Lines->Clear();
+  MainForm->Memo2->Lines->Clear();
+  MainForm->Memo3->Lines->Clear();
 
- CloseCOMPort();
- MessWindow->MessPlayer->Close();
- MainForm->MediaPlayer1->Close();
+  CloseCOMPort();
+  MessWindow->MessPlayer->Close();
+  MainForm->MediaPlayer1->Close();
 
- SaveSettings(&UseSoundFiles);
-
+  SaveSettings(&UseSoundFiles);
 
 }
 //---------------------------------------------------------------------------

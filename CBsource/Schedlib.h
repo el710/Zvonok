@@ -2,16 +2,6 @@
 #ifndef SHEDULE_LIB_HEADER
 #define SHEDULE_LIB_HEADER
 
-#define ENV_BORLAND_BUILDER  //use in Borland Builder C++
-
-#ifdef ENV_BORLAND_BUILDER
-   #include <vcl.h>
-
-   #include <vector>
-
-   using namespace std;
-#endif ENV_BORLAND_BUILDER
-
 
 //======== list of function's results
 #define  EL_RES_NO_EVENT        -1
@@ -162,17 +152,11 @@ int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
                       T_EventList* out_today, bool* out_holyday);
 unsigned int CheckSchedule(T_EventList* in_base, s_Time* in_time);
 
-int SetTodaySchedule(vector <Ti_Event> & base, vector <Ti_Event> & shed, bool* out_holyday);
 
-unsigned int CheckSchedule(vector <Ti_Event> & base);
-
-
-
-#ifdef ENV_BORLAND_BUILDER
    int MomentToStr(T_Date in_date,
                    T_Time in_time,
                    AnsiString * out_day,
                    AnsiString * out_time);
-#endif
+
 
 #endif // SHEDULE_LIB_HEADER
