@@ -114,13 +114,14 @@ typedef struct
 }Ti_Event;
 
 
-typedef struct
+typedef struct l_it
 {
   Ti_Event event;
 
-  void* prev;
-  void* next;
+  struct l_it* prev;
+  struct l_it* next;
 } T_ListItem;
+
 
 
 typedef struct
@@ -141,7 +142,9 @@ void InitEvent(Ti_Event * event); // init event structure
 void EventList_init(T_EventList* list);  // init EventList variables
 void EventList_clear(T_EventList* id_list); // free items of EventList
 T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event);  // add new Item to List
-Ti_Event EventList_get(T_EventList* id_list, unsigned int in_num);  // take event from List by order number
+T_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num);  // take event from List by order number
+T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, Ti_Event* in_event);
+void EventList_delete(T_EventList* id_list, unsigned int in_num);
 
 int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_list);
 
@@ -150,7 +153,7 @@ int EventList_SaveFile();
 
 int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
                       T_EventList* out_today, bool* out_holyday);
-unsigned int CheckSchedule(T_EventList* in_base, s_Time* in_time);
+T_ListItem* CheckSchedule(T_EventList* id_list, s_Time* in_time);
 
 
    int MomentToStr(T_Date in_date,

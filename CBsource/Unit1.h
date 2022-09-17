@@ -188,8 +188,6 @@ __published:	// IDE-managed Components
         void __fastcall FormCreate(TObject *Sender);
         void __fastcall N2Click(TObject *Sender);
         void __fastcall Timer1Timer(TObject *Sender);
-        void __fastcall N5Click(TObject *Sender);
-        void __fastcall N6Click(TObject *Sender);
         void __fastcall CurrentBaseDrawCell(TObject *Sender, int ACol,
           int ARow, TRect &Rect, TGridDrawState State);
         void __fastcall FormResize(TObject *Sender);

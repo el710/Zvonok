@@ -25,7 +25,7 @@ object MainForm: TMainForm
     Top = 0
     Width = 691
     Height = 505
-    ActivePage = SetupWin
+    ActivePage = SchedWin
     Align = alClient
     Font.Charset = RUSSIAN_CHARSET
     Font.Color = clGray
@@ -34,7 +34,7 @@ object MainForm: TMainForm
     Font.Style = [fsBold]
     MultiLine = True
     ParentFont = False
-    TabIndex = 2
+    TabIndex = 0
     TabOrder = 0
     TabPosition = tpBottom
     object SchedWin: TTabSheet
@@ -437,7 +437,7 @@ object MainForm: TMainForm
         TabOrder = 2
         object DialPanel: TPanel
           Left = 1
-          Top = 235
+          Top = 234
           Width = 681
           Height = 70
           Align = alBottom
@@ -488,7 +488,7 @@ object MainForm: TMainForm
           Left = 1
           Top = 1
           Width = 681
-          Height = 234
+          Height = 233
           Align = alClient
           Color = clCream
           ColCount = 3
@@ -1704,7 +1704,7 @@ object MainForm: TMainForm
                   Font.Height = -12
                   Font.Name = 'Arial'
                   Font.Style = [fsBold]
-                  ItemHeight = 0
+                  ItemHeight = 15
                   ParentFont = False
                   TabOrder = 2
                   OnChange = SigFilesChange
@@ -2158,7 +2158,7 @@ object MainForm: TMainForm
                   Top = 24
                   Width = 105
                   Height = 24
-                  ItemHeight = 0
+                  ItemHeight = 16
                   TabOrder = 0
                   Text = 'COM -'
                 end

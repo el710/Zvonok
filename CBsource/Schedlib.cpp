@@ -122,7 +122,9 @@ T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event)
   new_item->event.start_date = in_event->start_date;
   new_item->event.start_time = in_event->start_time;
   new_item->event.cycle_flags.all_flags = in_event->cycle_flags.all_flags;
+  new_item->event.cycle_flags.el.id_event = id_list->size;
   new_item->event.event_sign.all_signs = in_event->event_sign.all_signs;
+
 
   res = NewEvent(&new_item->event);
   if( res == EL_RES_ALLOCMEM_ERROR )
@@ -151,18 +153,50 @@ T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event)
 }
 //==================================================
 
-Ti_Event EventList_get(T_EventList* id_list, unsigned int in_num)
+TT_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num)
 {
-  T_ListItem* iter = id_list->first;
+  T_ListItem* item = id_list->first;
 
-  if((in_num + 1) > id_list->size) return id_list->last->event;
+  if((in_num + 1) > id_list->size) return NULL;
 
   for( unsigned int i = 0; i < in_num; i++ )
   {
-    iter = (T_ListItem*)iter->next;
+    item = item->next;
   }
 
-  return iter->event;
+  return item;
+}
+//==================================================
+
+T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, Ti_Event* in_event)
+{
+  T_ListItem* item;
+
+  item = EventList_get(id_list, in_num);
+  if(item == NULL) return NULL;
+
+  item->event.
+
+  return item;
+}
+//==================================================
+
+void EventList_delete(T_EventList* id_list, unsigned int in_num)
+{
+  T_ListItem* item = id_list->first;
+
+  if((in_num + 1) > id_list->size) return NULL;
+
+  for( unsigned int i = 0; i < in_num; i++ )
+  {
+    item = item->next;
+  }
+
+  relink
+
+  free
+
+  renumeration
 }
 //==================================================
 
@@ -408,29 +442,28 @@ int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
 }
 //==================================================
 
-unsigned int CheckSchedule(T_EventList* in_base, s_Time* in_time)
+T_ListItem* CheckSchedule(T_EventList* id_list, s_Time* in_time)
 {
   unsigned short i;
-  Ti_Event event;
+  T_ListItem* item = id_list->first;;
 
-  if(in_base->size == 0) return EL_RES_NO_EVENT;
+  if(id_list->size == 0) return NULL;
 
-  for(i=0; i < in_base->size; i++)
+  for(i=0; i < id_list->size; i++)
   {
-    event = EventList_get(in_base, i);
-
-    if(event.cycle_flags.el.is_showed ==0 )
+    if(item->event.cycle_flags.el.is_showed ==0 )
     {
-     if((!event.start_time.use_hour) || (event.start_time.hour == in_time->hour))
-       if((!event.start_time.use_minute) || (event.start_time.minute == in_time->minute))
-       {
-         return i;
-       }
+      if((!item->event.start_time.use_hour) || (item->event.start_time.hour == in_time->hour))
+        if((!item->event.start_time.use_minute) || (item->event.start_time.minute == in_time->minute))
+        {
+          return item;
+        }
     }
 
-  }// for
+    item = item->next;
+  }
 
- return EL_RES_NO_EVENT;
+ return NULL;
 }
 //==================================================
 
