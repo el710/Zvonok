@@ -1688,7 +1688,7 @@ object MainForm: TMainForm
                 object MediaPlayer1: TMediaPlayer
                   Left = 163
                   Top = 88
-                  Width = -1
+                  Width = 57
                   Height = 25
                   EnabledButtons = [btPlay, btStop, btEject]
                   VisibleButtons = [btPlay, btStop]
@@ -1760,7 +1760,7 @@ object MainForm: TMainForm
           Left = 1
           Top = 1
           Width = 175
-          Height = 412
+          Height = 411
           Align = alClient
           ColCount = 2
           FixedCols = 0

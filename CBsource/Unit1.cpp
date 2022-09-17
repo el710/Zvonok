@@ -57,7 +57,8 @@ enum T_TypeList {BASE_LIST, TODAY_LIST, DATE_LIST};
 typedef struct
 {
   s_Date date;
-  T_TypeList list;
+  T_TypeList t_list;
+  T_EventList* list;
 }T_ViewList;
 
 
@@ -69,6 +70,7 @@ AnsiString Months[] = {"января","февраля","марта", "апреля",
                            "мая", "июня", "июля", "августа",
                            "сентября", "октября", "ноября", "декабря"};
 
+AnsiString WeekDay[] = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
 
 AnsiString WeekFDay[] = {"Понедельник",
                          "Вторник",
@@ -136,6 +138,100 @@ unsigned int CheckRingTime;  // delay counter for check ring
 
 //================================================================
 // ============== User Functions =================================
+
+int MomentToStr( T_Date in_date,
+                 T_Time in_time,
+                 AnsiString * out_day,
+                 AnsiString * out_time)
+{
+ int i, c_f, c_e;
+ AnsiString str_date, str_time, str_buf;
+
+ str_date=""; str_time="";
+
+ if(in_date.exclusive_day) str_date="* ";
+
+ if(in_date.use_day) str_date=str_date + IntToStr(in_date.day);
+ if(in_date.use_month)
+   {
+    //if (!event.start_date.use_day) str_date=MonthOfDay[event.start_date.mounth-1];
+    //  else
+    str_date=str_date+" "+Months[in_date.month-1];
+   }
+   else
+   {
+    if (in_date.use_day) str_date=str_date+" число ";
+   }
+ if(in_date.use_year)
+   {
+    if (in_date.use_month)
+      {
+       str_date=str_date+" "+IntToStr(in_date.year);
+      }
+      else str_date=str_date+IntToStr(in_date.year);
+   }
+
+ if(in_date.use_weekly)
+   {
+    c_f=c_e=-1;
+    for (i=0;i<7;i++)
+      {
+       if( (in_date.weekday & (1 << i)) != 0 )
+         {
+          if (c_f == -1) c_f = i;
+          c_e = i;
+         }
+      }// for
+
+    if(c_f != -1)
+      {
+       str_date=str_date + " " + WeekDay[c_f];
+       if( (c_e != -1) && (c_e != c_f) )
+         str_date=str_date + ".." + WeekDay[c_e];
+      }
+   } // weekly
+
+ *out_day = str_date;
+
+ if(in_time.use_hour) str_time=IntToStr(in_time.hour);
+
+ if(in_time.use_minute)
+   {
+    if (in_time.minute<10)
+      {
+       str_buf = "0"+ IntToStr(in_time.minute);
+      }
+      else str_buf = IntToStr(in_time.minute);
+
+    if (in_time.use_hour) str_time=str_time+":"+str_buf;
+      else str_time=str_buf+" мин.";
+   }
+   else
+   {
+    if (in_time.use_hour) str_time=str_time+" ч.";
+//      else
+//      {
+//       str_time="-";
+//      }
+   }
+
+ *out_time = str_time;
+ /*
+ if(str_date != "")
+   {
+    if (str_time != "") str_date = str_date+" - "+str_time;
+   }
+   else
+     {
+      if(str_time != "") { str_date = str_time; }
+     }
+
+ *text = str_date+" ";
+ */
+ return 0;
+}
+//=========================================================
+
 
 void NowString(AnsiString & date,AnsiString & time)
 {
@@ -430,7 +526,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, T_EventList* out_base)
   AnsiString bs,ws,str_buf, w_file;
   bool variants[100];
   int Founded_rec;
-  Ti_Event temp_list[MAX_OLD_EVENTS+1]; // thought that they have 2 variants per day
+  T_Event temp_list[MAX_OLD_EVENTS+1]; // thought that they have 2 variants per day
   bool correct_event;
 
   t_OldActiveEvent active_rxx[7];
@@ -788,7 +884,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, T_EventList* out_base)
         temp_list[MAX_OLD_EVENTS].start_time.use_minute = false;
         temp_list[MAX_OLD_EVENTS].start_time.use_second = false;
 
-        EventList_push(out_base,&temp_list[MAX_OLD_EVENTS]);
+        EventList_add(out_base,&temp_list[MAX_OLD_EVENTS]);
         MainForm->Memo1->Lines->Add("Add Ex "+bs+" to Base");
 
         if(temp_list[MAX_OLD_EVENTS].cycle_flags.el.id_rfile != -1)
@@ -812,7 +908,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, T_EventList* out_base)
               if(temp_list[MAX_OLD_EVENTS].caption != NULL)
                 strcpy(temp_list[MAX_OLD_EVENTS].caption, "Сигнал");
 
-              EventList_push(out_base, &temp_list[MAX_OLD_EVENTS]);
+              EventList_add(out_base, &temp_list[MAX_OLD_EVENTS]);
               MainForm->Memo1->Lines->Add("Add event of Ex "+bs+" to Base");
             }
           }// for k events
@@ -839,7 +935,7 @@ unsigned int OpenOldSchedule(AnsiString in_SchedFile, T_EventList* out_base)
       temp_list[k].start_date.use_day=false;
       if (temp_list[k].caption[0] == 0) strcpy(temp_list[k].caption, temp_list[k].sound);
 
-      EventList_push(out_base, &temp_list[k]);
+      EventList_add(out_base, &temp_list[k]);
       MainForm->Memo1->Lines->Add("Add event "+IntToStr(k+1)+" to Base");
       MainForm->Memo1->Lines->Add("Size of Base "+IntToStr(out_base->size));
     }
@@ -979,7 +1075,6 @@ void ShowBase()
   int i, CurRow;
   AnsiString str_date, str_time, str_buf;
 
-  T_EventList* e_list;
   T_ListItem* item;
 
   T_Date in_date;
@@ -991,19 +1086,21 @@ void ShowBase()
    MainForm->CurrentBase->RowCount = 1;
 #endif
 
-  if(ShowList.list == BASE_LIST)
+  if(ShowList.t_list == BASE_LIST)
   {
-    e_list = &BaseEventList;
+#ifdef GRID_TITLE
+    MainForm->CurrentBase->Cells[1][0] = "Все события";
+#endif
   }
   else
   {
-    if(ShowList.list == DATE_LIST)
+    if(ShowList.t_list == DATE_LIST)
     {
-      e_list = &DateEventList;
+
     }
     else
     {
-      e_list = &TodayEventList;
+
     }
 
     in_date.year = ShowList.date.year;
@@ -1018,7 +1115,7 @@ void ShowBase()
     in_time.use_minute = false;
     in_time.use_second = false;
 
-    MomentToStr(in_date, item->event.start_time, &str_date, &str_time);
+    MomentToStr(in_date, in_time, &str_date, &str_time);
 #ifdef GRID_TITLE
    MainForm->CurrentBase->Cells[1][0] = "События на: " + str_date;
 #endif
@@ -1027,17 +1124,17 @@ void ShowBase()
 
 
 
-  if( e_list->size > 0)
+  if( ShowList.list->size > 0)
   {
 #ifdef GRID_TITLE
-   MainForm->CurrentBase->RowCount = e_list->size + 1;
+   MainForm->CurrentBase->RowCount = ShowList.list->size + 1;
    CurRow=1;
 #else
-   MainForm->CurrentBase->RowCount = e_list->size;
+   MainForm->CurrentBase->RowCount = ShowList.list->size;
    CurRow=0;
 #endif
-    item = e_list->first;
-    for(i=0; i<e_list->size; i++)
+    item = ShowList.list->first;
+    for(i=0; i < ShowList.list->size; i++)
     {
       MomentToStr(item->event.start_date, item->event.start_time, &str_date, &str_time);
 
@@ -2279,7 +2376,7 @@ void MakeTime(T_Time * out_time)
 //========================================================================
 
 
-int MakeEvent(Ti_Event* event)
+int MakeEvent(T_Event* event)
 {
   int num;
 
@@ -2353,48 +2450,48 @@ void ShowMomentTitle()
 }
 //========================================================================
 
-void SetAllControl(Ti_Event & event)
+void SetAllControl(T_Event* event)
 {
  AnsiString str_day, str_time;
 
- f_hour = event.start_time.hour;
- f_min =  event.start_time.minute;
+ f_hour = event->start_time.hour;
+ f_min =  event->start_time.minute;
 
- MainForm->FUseHour->Checked = event.start_time.use_hour;
+ MainForm->FUseHour->Checked = event->start_time.use_hour;
  SetHour(f_hour);  // set values;
  SetUseHour(MainForm->FUseHour->Checked);
 
- MainForm->FUseMinute->Checked = event.start_time.use_minute;
+ MainForm->FUseMinute->Checked = event->start_time.use_minute;
  SetMinute(f_min);  // set values;
  SetUseMinute(MainForm->FUseMinute->Checked);
 
- SetUseDate(event.start_date.use_year,event.start_date.use_month,event.start_date.use_day);
+ SetUseDate(event->start_date.use_year,event->start_date.use_month,event->start_date.use_day);
  SetLinkDate();
- if (event.start_date.use_weekly)
+ if (event->start_date.use_weekly)
    {
     MainForm->PageControl3->ActivePage = MainForm->WeekTab;
    }
  SetVariant();
 
- MainForm->Is_seleb->Checked = event.start_date.exclusive_day;
+ MainForm->Is_seleb->Checked = event->start_date.exclusive_day;
 
  if(MainForm->PageControl3->ActivePage == MainForm->WeekTab)
    {
-    MainForm->At_mon->Checked = ((event.start_date.weekday & WD_MONDAY) !=0) ? true:false;
-    MainForm->At_tue->Checked = ((event.start_date.weekday & WD_TUESDAY) !=0) ? true:false;
-    MainForm->At_wed->Checked =  ((event.start_date.weekday & WD_WEDNSDAY) !=0) ? true:false;
-    MainForm->At_thur->Checked = ((event.start_date.weekday & WD_THURSDAY) !=0) ? true:false;
-    MainForm->At_fri->Checked =  ((event.start_date.weekday & WD_FRIDAY) !=0) ? true:false;
-    MainForm->At_sat->Checked =  ((event.start_date.weekday & WD_SATURDAY) !=0) ? true:false;
-    MainForm->At_sun->Checked =  ((event.start_date.weekday & WD_SUNDAY) !=0) ? true:false;
+    MainForm->At_mon->Checked = ((event->start_date.weekday & WD_MONDAY) !=0) ? true:false;
+    MainForm->At_tue->Checked = ((event->start_date.weekday & WD_TUESDAY) !=0) ? true:false;
+    MainForm->At_wed->Checked =  ((event->start_date.weekday & WD_WEDNSDAY) !=0) ? true:false;
+    MainForm->At_thur->Checked = ((event->start_date.weekday & WD_THURSDAY) !=0) ? true:false;
+    MainForm->At_fri->Checked =  ((event->start_date.weekday & WD_FRIDAY) !=0) ? true:false;
+    MainForm->At_sat->Checked =  ((event->start_date.weekday & WD_SATURDAY) !=0) ? true:false;
+    MainForm->At_sun->Checked =  ((event->start_date.weekday & WD_SUNDAY) !=0) ? true:false;
    }
- MainForm->At_seleb->Checked = (event.cycle_flags.el.even_in_exclusive==1) ? true:false;
+ MainForm->At_seleb->Checked = (event->cycle_flags.el.even_in_exclusive==1) ? true:false;
 
 
- MainForm->Add_ring->Checked = (event.event_sign.el.is_ring == 1) ? true:false;
- MainForm->RingDelay->Position = event.event_sign.el.ring_time;
+ MainForm->Add_ring->Checked = (event->event_sign.el.is_ring == 1) ? true:false;
+ MainForm->RingDelay->Position = event->event_sign.el.ring_time;
 
- MainForm->Add_sound->Checked = (event.event_sign.el.is_sound == 1) ? true:false;
+ MainForm->Add_sound->Checked = (event->event_sign.el.is_sound == 1) ? true:false;
 
  ShowMomentTitle();
 
@@ -2406,7 +2503,7 @@ void ShowAddDialog()
 {
  TDateTime dt;
  AnsiString str_buf;
- Ti_Event  mem_event;
+ T_Event  mem_event;
 
  unsigned short n_hour, n_min, n_sec, n_msec;
  unsigned short n_year, n_mon, n_day;
@@ -2443,7 +2540,7 @@ void ShowAddDialog()
  MainForm->EventText->Caption = " Новое событие ";
  MainForm->ButSaveas->Visible= false;
 
- SetAllControl(mem_event);
+ SetAllControl(&mem_event);
 
  MainForm->Memo1->Clear();
 
@@ -2476,7 +2573,7 @@ void ShowAddDialog()
 }
 //==========================================================================
 
-void ShowEditDialog(Ti_Event & in_event)
+void ShowEditDialog(T_Event* in_event)
 {
  TDateTime dt;
  AnsiString str_buf;
@@ -2488,23 +2585,23 @@ void ShowEditDialog(Ti_Event & in_event)
  dt = Now();
  dt.DecodeDate(&n_year,&n_mon,&n_day);
 
- MainForm->EventNum->Caption = IntToStr(in_event.cycle_flags.el.id_event);
+ MainForm->EventNum->Caption = IntToStr(in_event->cycle_flags.el.id_event);
 
  MainForm->Caption="Изменить событие";
  MainForm->ButSaveEvent->Caption="Сохранить изменения";
- MainForm->EventText->Caption = " Событие: " + IntToStr(in_event.cycle_flags.el.id_event +1)+ " ";
+ MainForm->EventText->Caption = " Событие: " + IntToStr(in_event->cycle_flags.el.id_event +1)+ " ";
  MainForm->ButSaveas->Visible= true;
 
- if(!in_event.start_date.use_day)
+ if(!in_event->start_date.use_day)
    {
     MainForm->DateTimePicker1->Date = dt;
    }
    else
     {
-     str_buf = IntToStr(in_event.start_date.day)+"."+IntToStr(in_event.start_date.month);
-     if (in_event.start_date.use_year)
+     str_buf = IntToStr(in_event->start_date.day)+"."+IntToStr(in_event->start_date.month);
+     if (in_event->start_date.use_year)
        {
-        str_buf = str_buf + "."+IntToStr(in_event.start_date.year);
+        str_buf = str_buf + "."+IntToStr(in_event->start_date.year);
        }
        else
        {
@@ -2516,8 +2613,8 @@ void ShowEditDialog(Ti_Event & in_event)
  SetAllControl(in_event);
 
  MainForm->Memo3->Clear();
- if(in_event.caption != NULL)
-   MainForm->Memo3->Lines->Add(AnsiString(in_event.caption));
+ if(in_event->caption != NULL)
+   MainForm->Memo3->Lines->Add(AnsiString(in_event->caption));
 
  MainForm->Memo3->CaretPos = Point(MainForm->Memo3->Lines[0].Text.Length()-1 ,0);
 
@@ -2531,15 +2628,15 @@ void ShowEditDialog(Ti_Event & in_event)
        ++iter;
       }
 
-    if(in_event.sound != NULL)
+    if(in_event->sound != NULL)
     {
-      i =  GetIDSound(AnsiString(in_event.sound));
+      i =  GetIDSound(AnsiString(in_event->sound));
     }
     else { i = -1; }
 
     if(i >= 0)
       {
-       MainForm->SigFiles->Text = AnsiString(in_event.sound);
+       MainForm->SigFiles->Text = AnsiString(in_event->sound);
        MainForm->SigFiles->ItemIndex = i;
       }
       else
@@ -2571,7 +2668,7 @@ void ShowEditDialog(Ti_Event & in_event)
 void SaveEvent(bool new_event)
 {
   int number;
-  Ti_Event  event;
+  T_Event  event;
 
   NewEvent(&event);
 
@@ -2579,7 +2676,7 @@ void SaveEvent(bool new_event)
 
   if((number == -1) || new_event) // new event
   {
-    EventList_push(&BaseEventList,&event);
+    EventList_add(&BaseEventList,&event);
   }
   else
   {
@@ -2885,7 +2982,7 @@ void SaveSettings(T_SoundFiles * in_set)
 }
 //==========================================================================
 
-void DoSignal(Ti_Event & in_event)
+void DoSignal(T_Event & in_event)
 {
   AnsiString str_day, str_time, str_buf;
 
@@ -2985,7 +3082,7 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
   b_date.year = n_year;
   b_date.month = n_mon;
   b_date.day = n_day;
-  b_date.weekday = n_wd;
+  b_date.weekday = (1 << n_wd);
 
   b_time.hour = n_hour;
   b_time.minute = n_min;
@@ -3065,7 +3162,8 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
 
   NewDayCheck = true;
 
-  ShowList.list = TODAY_LIST;
+  ShowList.t_list = TODAY_LIST;
+  ShowList.list = &TodayEventList;
   ShowList.date = b_date;
   ShowBase();
 
@@ -3290,7 +3388,7 @@ void __fastcall TMainForm::CurrentBaseSelectCell(TObject *Sender, int ACol,
 void __fastcall TMainForm::CurrentBaseDblClick(TObject *Sender)
 {
  int i;
- Ti_Event base;
+ T_ListItem* item;
 
  if(MessWindow->Visible)
    {
@@ -3305,36 +3403,20 @@ void __fastcall TMainForm::CurrentBaseDblClick(TObject *Sender)
     PageControl2->ActivePage = MainMenu;
     DeleteMode = false;
    }else
-// if(!DeleteMode)
    {
-
 #ifdef GRID_TITLE
-    if (SelGridRow > 0)
+     if (SelGridRow > 0)
 #endif
-      {
-       if (ShowToday)
+     {
+       if(TryStrToInt(MainForm->CurrentBase->Cells[2][SelGridRow],i))
+       {
+         item = EventList_get(ShowList.list, i);
+         if(item != NULL)
          {
-          i =  TodayList.size();
-          if(( SelGridRow <= i) && (i > 0))
-            {
-#ifdef GRID_TITLE
-             base = TodayList[SelGridRow-1];
-#else
-             base = TodayList[SelGridRow];
-#endif
-             ShowEditDialog(base);
-            }
+           ShowEditDialog(&item->event);
          }
-         else
-         {
-#ifdef GRID_TITLE
-          base = BaseEvent[SelGridRow-1];
-#else
-          base = BaseEvent[SelGridRow];
-#endif
-          ShowEditDialog(base);
-         }
-      }
+       }
+     }
    }
 }
 //---------------------------------------------------------------------------
@@ -3348,42 +3430,48 @@ void __fastcall TMainForm::ButSetupClick(TObject *Sender)
 
 void __fastcall TMainForm::ButShowTodayClick(TObject *Sender)
 {
-AnsiString str_date, str_time;
+  TDateTime dt;
+  unsigned short n_year, n_mon, n_day, n_wd;
 
- if (ShowToday == false)
+  if(ShowList.t_list != TODAY_LIST)
    {
-    MainForm->ButShowToday->Font->Color = clGreen;
-    MainForm->ButShowToday->Font->Size = 12;
-    MainForm->ButAllEvent->Font->Color = clSilver;
-    MainForm->ButAllEvent->Font->Size = 10;
+     dt = Now();
+     dt.DecodeDate(&n_year,&n_mon,&n_day);
+     n_wd = dt.DayOfWeek();
+     if(n_wd == 1) n_wd = 6; else n_wd -=2;
 
-      NowString(str_date, str_time);
+     MainForm->ButShowToday->Font->Color = clGreen;
+     MainForm->ButShowToday->Font->Size = 12;
+     MainForm->ButAllEvent->Font->Color = clSilver;
+     MainForm->ButAllEvent->Font->Size = 10;
 
-#ifdef GRID_TITLE
-    MainForm->CurrentBase->Cells[1][0] = "События на: " + str_date;
-#endif
-    ShowBase(TodayList);
-    MainForm->CurrentBase->SetFocus();
-    ShowToday  = true;
+     ShowList.t_list = TODAY_LIST;
+     ShowList.list = &TodayEventList;
+     ShowList.date.year = n_year;
+     ShowList.date.month = n_mon;
+     ShowList.date.day = n_day;
+     ShowList.date.weekday = (1 << n_wd);
+
+     ShowBase();
+     MainForm->CurrentBase->SetFocus();
    }
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::ButAllEventClick(TObject *Sender)
 {
- if (ShowToday )
+ if (ShowList.t_list != BASE_LIST)
    {
     MainForm->ButShowToday->Font->Color = clSilver;
     MainForm->ButShowToday->Font->Size = 10;
     MainForm->ButAllEvent->Font->Color = clGreen;
     MainForm->ButAllEvent->Font->Size = 12;
-#ifdef GRID_TITLE
-    MainForm->CurrentBase->Cells[1][0] = "Все события";
-#endif
-    ShowBase(BaseEvent);
+
+    ShowList.t_list = BASE_LIST;
+    ShowList.list = &BaseEventList;
+    ShowBase();
 
     MainForm->CurrentBase->SetFocus();
-    ShowToday  = false;
    }
 }
 //---------------------------------------------------------------------------
@@ -3499,17 +3587,33 @@ void __fastcall TMainForm::ButDialNoClick(TObject *Sender)
 
 void __fastcall TMainForm::ButDialOkClick(TObject *Sender)
 {
- BaseEvent.erase(BaseEvent.begin()+DelNumEvent);
+  TDateTime dt;
+  s_Date b_date;
 
- SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
- RepaintBase();
+  unsigned short n_year, n_mon, n_day, n_wd;
 
 
- MainForm->DialPanel->Visible = false;
- PageControl2->ActivePage = MainMenu;
- DeleteMode = false;
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
 
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
+
+  EventList_delete(&BaseEventList, DelNumEvent);
+
+  MakeTodaySchedule(&BaseEventList, &b_date, &TodayEventList, &IsHolyDay);
+
+  SaveBase(WorkScheduleFile);
+
+  ShowBase();
+
+  MainForm->DialPanel->Visible = false;
+  PageControl2->ActivePage = MainMenu;
+  DeleteMode = false;
 }
 //---------------------------------------------------------------------------
 
@@ -3518,15 +3622,12 @@ void __fastcall TMainForm::ButDialOkClick(TObject *Sender)
 
 void __fastcall TMainForm::FormClose(TObject *Sender, TCloseAction &Action)
 {
-  BaseEvent.clear();
-  TodayList.clear();
-  ViewList.clear();
   SoundFiles.clear();
 
   EventList_clear(&BaseEventList);
   EventList_clear(&TodayEventList);  // today events
   EventList_clear(&EditEventList);   // edit day events
-  EventList_clear(&ViewEventList);   // view day events
+  EventList_clear(&DateEventList);   // view day events
 
   MainForm->Memo1->Lines->Clear();
   MainForm->Memo2->Lines->Clear();
@@ -3819,14 +3920,28 @@ void __fastcall TMainForm::ButEditBackClick(TObject *Sender)
 
 void __fastcall TMainForm::ButSaveEventClick(TObject *Sender)
 {
- SaveEvent(false);
- SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
- RepaintBase();
+  TDateTime dt;
+  s_Date b_date;
+  unsigned short n_year, n_mon, n_day, n_wd;
 
- MainForm->MediaPlayer1->Stop();  MainForm->MediaPlayer1->Close();
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
 
- MainForm->PageControl1->ActivePage = MainForm->SchedWin;
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
+
+  SaveEvent(false);
+  SaveBase(WorkScheduleFile);
+  MakeTodaySchedule(&BaseEventList, &b_date, &TodayEventList, &IsHolyDay);
+  ShowBase();
+
+  MainForm->MediaPlayer1->Stop();  MainForm->MediaPlayer1->Close();
+
+  MainForm->PageControl1->ActivePage = MainForm->SchedWin;
 }
 //---------------------------------------------------------------------------
 
@@ -3869,12 +3984,27 @@ void __fastcall TMainForm::Timer2Timer(TObject *Sender)
 
 void __fastcall TMainForm::ButSaveasClick(TObject *Sender)
 {
- SaveEvent(true);
- SaveBase(WorkScheduleFile);
- SetTodaySchedule(BaseEvent, TodayList,&IsHolyDay);
- RepaintBase();
- MediaPlayer1->Stop();  MediaPlayer1->Close();
- PageControl1->ActivePage = SchedWin;
+  TDateTime dt;
+  s_Date b_date;
+  unsigned short n_year, n_mon, n_day, n_wd;
+
+  dt = Now();
+  dt.DecodeDate(&n_year,&n_mon,&n_day);
+  n_wd = dt.DayOfWeek();
+  if(n_wd == 1) n_wd = 6; else n_wd -=2;
+
+  b_date.year = n_year;
+  b_date.month = n_mon;
+  b_date.day = n_day;
+  b_date.weekday = n_wd;
+
+  SaveEvent(true);
+  SaveBase(WorkScheduleFile);
+  MakeTodaySchedule(&BaseEventList, &b_date, &TodayEventList, &IsHolyDay);
+  ShowBase();
+
+  MediaPlayer1->Stop();  MediaPlayer1->Close();
+  PageControl1->ActivePage = SchedWin;
 }
 //---------------------------------------------------------------------------
 
@@ -4280,10 +4410,10 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
   TFileStream  * tfile;
   char* virtual_file;
 
-
+  T_ListItem* item;
   T_EventList BaseEventList, TodayEvList;
 
-  Ti_Event event;
+  T_Event event;
   s_Date b_date;
   s_Time b_time;
 
@@ -4319,15 +4449,9 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
   MakeTodaySchedule(&BaseEventList, &b_date, &TodayEvList, &IsHolyDay);
 
   // check in every minute
-  k =  CheckSchedule(&TodayEvList, &b_time);
+  item =  CheckSchedule(&TodayEvList, &b_time);
 
-  TodayList.clear();
-  for(k=0; k < TodayEvList.size; k++)
-  {
-    event = EventList_get(&TodayEvList, k);
-    TodayList.push_back(event);
-  }
-  ShowBase(TodayList);
+
 
   EventList_clear(&BaseEventList);
   EventList_clear(&TodayEvList);

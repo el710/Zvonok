@@ -1,22 +1,30 @@
 #include "malloc.h"
 #include "stdio.h"
 #include "stdint.h"
+#include "string.h"
 
 #include "Schedlib.h"
 
-
+/*
 AnsiString MonthName[] = {"января","февраля","марта", "апреля",
                            "мая", "июня", "июля", "августа",
                            "сентября", "октября", "ноября", "декабря"};
 
+AnsiString WeekDay[] = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
 
-AnsiString WeekSDay[] = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
-
+AnsiString WeekFDay[] = {"Понедельник",
+                         "Вторник",
+                         "Среда",
+                         "Четверг",
+                         "Пятница",
+                         "Суббота",                                
+                         "Воскресенье"};
+*/
 
 
 //============================ function's implement
 
-int NewEvent(Ti_Event * event)
+int NewEvent(T_Event * event)
 {
   char* p_char;
 
@@ -42,7 +50,7 @@ int NewEvent(Ti_Event * event)
 }
 //============================================
 
-int FreeEvent(Ti_Event * event)
+int FreeEvent(T_Event * event)
 {
   free(event->caption);
   event->caption = NULL;
@@ -53,7 +61,7 @@ int FreeEvent(Ti_Event * event)
 }
 //============================================
 
-void InitEvent(Ti_Event * event)
+void InitEvent(T_Event * event)
 {
   event->start_date.use_day = false;
   event->start_date.use_month = false;
@@ -93,7 +101,7 @@ void EventList_init(T_EventList* list)
 void EventList_clear(T_EventList* id_list)
 {
 
- void* a;
+ T_ListItem* a;
  T_ListItem* b = id_list->last;
 
 
@@ -102,7 +110,7 @@ void EventList_clear(T_EventList* id_list)
    a = b->prev;
    FreeEvent(&b->event);
    free(b);
-   if(a != NULL) b = (T_ListItem*)a;
+   if(a != NULL) b = a;
  }
 
  EventList_init(id_list);
@@ -110,7 +118,7 @@ void EventList_clear(T_EventList* id_list)
 //==================================================
 
 
-T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event)
+T_ListItem* EventList_add(T_EventList* id_list, T_Event* in_event)
 {
   T_ListItem* new_item;
   int res;
@@ -153,13 +161,55 @@ T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event)
 }
 //==================================================
 
-TT_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num)
+T_ListItem* EventList_copy(T_EventList* id_list, T_Event* in_event)
+{
+  T_ListItem* new_item;
+  int res;
+
+  new_item = (T_ListItem*) malloc(sizeof(T_ListItem));
+  if( new_item == NULL ) return NULL;
+
+  new_item->next = NULL;
+  new_item->event.start_date = in_event->start_date;
+  new_item->event.start_time = in_event->start_time;
+  new_item->event.cycle_flags.all_flags = in_event->cycle_flags.all_flags;
+  new_item->event.event_sign.all_signs = in_event->event_sign.all_signs;
+
+
+  res = NewEvent(&new_item->event);
+  if( res == EL_RES_ALLOCMEM_ERROR )
+  {
+    free(new_item);
+    return NULL;
+  }
+  strcpy(new_item->event.caption, in_event->caption);
+  strcpy(new_item->event.sound, in_event->sound);
+
+  if(id_list->size ==0)
+  {
+    new_item->prev = NULL;
+    id_list->first = new_item;
+  }
+  else
+  {
+    new_item->prev = id_list->last;
+    id_list->last->next = new_item;
+  }
+
+  id_list->last = new_item;
+  id_list->size++;
+
+  return new_item;
+}
+//==================================================
+
+T_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num)
 {
   T_ListItem* item = id_list->first;
 
-  if((in_num + 1) > id_list->size) return NULL;
-
-  for( unsigned int i = 0; i < in_num; i++ )
+  while(  item->event.cycle_flags.el.id_event != in_num
+        && item != NULL
+       )
   {
     item = item->next;
   }
@@ -168,14 +218,20 @@ TT_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num)
 }
 //==================================================
 
-T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, Ti_Event* in_event)
+T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, T_Event* in_event)
 {
   T_ListItem* item;
 
   item = EventList_get(id_list, in_num);
   if(item == NULL) return NULL;
 
-  item->event.
+  item->event.start_date = in_event->start_date;
+  item->event.start_time = in_event->start_time;
+  item->event.cycle_flags.el.is_event_active = in_event->cycle_flags.el.is_event_active;
+  item->event.cycle_flags.el.even_in_exclusive = in_event->cycle_flags.el.even_in_exclusive;
+  item->event.event_sign.all_signs = in_event->event_sign.all_signs;
+  strcpy(item->event.caption, in_event->caption);
+  strcpy(item->event.sound, in_event->sound);
 
   return item;
 }
@@ -183,22 +239,153 @@ T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, Ti_Event
 
 void EventList_delete(T_EventList* id_list, unsigned int in_num)
 {
-  T_ListItem* item = id_list->first;
+  T_ListItem* item;
+  int i;
 
-  if((in_num + 1) > id_list->size) return NULL;
+  item = EventList_get(id_list, in_num);
+  if(item != NULL)
+  { //relink
+    if(item->prev == NULL)  // item is first
+    {
+      if(item->next == NULL) // item is one
+      {
+        EventList_init(id_list);
+      }
+      else
+      {
+        id_list->first = item->next;
+        item->next->prev == NULL;
+        id_list->size--;
+      }
+    }
+    else
+    if(item->next == NULL) // item is last
+    {
+      id_list->last = item->prev;
+      item->prev->next == NULL;
+      id_list->size--;
+    }
+    else
+    {
+      item->prev->next = item->next;
+      item->next->prev = item->prev;
+      id_list->size--;
+    }
 
-  for( unsigned int i = 0; i < in_num; i++ )
+    // free
+    FreeEvent(&item->event);
+    free(item);
+
+    // renumeration
+    if(id_list->size > 0)
+    {
+      item = id_list->first; i=0;
+      while(item != NULL)
+      {
+        item->event.cycle_flags.el.id_event = i;
+        i++;
+        item = item->next;
+      }
+    }
+
+  }
+}
+//==================================================
+
+int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
+                      T_EventList* out_list, bool* out_holyday)
+{
+  T_ListItem* item;
+  bool check_holyday;
+  bool found_holyday = false;
+
+  unsigned short i, k;
+
+  if( in_base->size ==0 ) { return EL_RES_BASE_EMPTY; }
+
+  EventList_clear(out_list);
+
+  check_holyday = false;
+  for(k=0; k < in_base->size; k++)
   {
+    item = EventList_get(in_base, k);
+
+    // check is today Holyday
+    if(  (   item->event.start_date.day == in_date->day     // event day is today
+          && item->event.start_date.month == in_date->month
+         )
+       ||(   item->event.start_date.use_weekly            // or event weekday
+          && item->event.start_date.weekday == in_date->weekday   // is now
+         )
+      )
+    {
+      if(   check_holyday == false
+         && item->event.start_date.exclusive_day   // event is holyday
+        )
+      { found_holyday = true; check_holyday = true; }
+      else { found_holyday = false; }
+    }
+
+    if( !item->event.start_date.use_year || (item->event.start_date.year == in_date->year) ) // every year or in this year
+    {
+      if( !item->event.start_date.use_month || (item->event.start_date.month == in_date->month) )
+      {
+        if( !item->event.start_date.use_day || (item->event.start_date.day == in_date->day) )
+        {
+          if( !item->event.start_date.use_day)
+          {
+            if(item->event.start_date.use_weekly)
+            {
+              for(i=0;i<7;i++)   // week-day
+              {
+                if( (item->event.start_date.weekday & (1 << i)) != 0 )
+                {
+                  if(in_date->weekday == i)
+                  {
+                    EventList_copy(out_list, &item->event); break;
+                  }
+                }
+              }//for
+            }// weekly
+            else EventList_copy(out_list, &item->event);
+          } //not day
+          else EventList_copy(out_list, &item->event);
+        }// every day or in this day
+      }// every month or in this month
+    }// every year or in this year
+
+  }// for
+
+  *out_holyday = found_holyday;
+  return EL_RES_OK;
+}
+//==================================================
+
+T_ListItem* CheckSchedule(T_EventList* id_list, s_Time* in_time)
+{
+  unsigned short i;
+  T_ListItem* item = id_list->first;;
+
+  if(id_list->size == 0) return NULL;
+
+  for(i=0; i < id_list->size; i++)
+  {
+    if(item->event.cycle_flags.el.is_showed ==0 )
+    {
+      if((!item->event.start_time.use_hour) || (item->event.start_time.hour == in_time->hour))
+        if((!item->event.start_time.use_minute) || (item->event.start_time.minute == in_time->minute))
+        {
+          return item;
+        }
+    }
+
     item = item->next;
   }
 
-  relink
-
-  free
-
-  renumeration
+ return NULL;
 }
 //==================================================
+
 
 int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_list)
 {
@@ -209,7 +396,7 @@ int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_l
 
   char str[FILE_STRING_SIZE_MAX]={0};  // string buffer
   unsigned int num; // number buffer
-  Ti_Event event; // event buffer
+  T_Event event; // event buffer
 
   unsigned short j,k;  // counters
 
@@ -311,7 +498,7 @@ int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_l
 
           if(mes_str_num == event.cycle_flags.el.id_rfile)   // last string of text
           {
-            EventList_push(out_list, &event);
+            EventList_add(out_list, &event);
 
             state = 0; // next event record
           }
@@ -373,192 +560,10 @@ int EventList_ReadFile(const char* in_SchedFile, T_EventList* out_base)
 
 
 
-int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
-                      T_EventList* out_list, bool* out_holyday)
-{
-  Ti_Event event;
-  bool check_holyday;
-  bool found_holyday = false;
-
-  unsigned short i, k;
-
-  if( in_base->size ==0 ) { return EL_RES_BASE_EMPTY; }
-
-  EventList_clear(out_list);
-
-  check_holyday = false;
-  for(k=0; k < in_base->size; k++)
-  {
-    event = EventList_get(in_base, k);
-
-    // check is today Holyday
-    if(  (   event.start_date.day == in_date->day     // event day is today
-          && event.start_date.month == in_date->month
-         )
-       ||(   event.start_date.use_weekly            // or event weekday
-          && event.start_date.weekday == in_date->weekday   // is now
-         )
-      )
-    {
-      if(   check_holyday == false
-         && event.start_date.exclusive_day   // event is holyday
-        )
-      { found_holyday = true; check_holyday = true; }
-      else { found_holyday = false; }
-    }
-
-    if( !event.start_date.use_year || (event.start_date.year == in_date->year) ) // every year or in this year
-    {
-      if( !event.start_date.use_month || (event.start_date.month == in_date->month) )
-      {
-        if( !event.start_date.use_day || (event.start_date.day == in_date->day) )
-        {
-          if( !event.start_date.use_day)
-          {
-            if(event.start_date.use_weekly)
-            {
-              for(i=0;i<7;i++)   // week-day
-              {
-                if( (event.start_date.weekday & (1 << i)) != 0 )
-                {
-                  if(in_date->weekday == i)
-                  {
-                    EventList_push(out_list, &event); break;
-                  }
-                }
-              }//for
-            }// weekly
-            else EventList_push(out_list, &event);
-          } //not day
-          else EventList_push(out_list, &event);
-        }// every day or in this day
-      }// every month or in this month
-    }// every year or in this year
-
-  }// for
-
-  *out_holyday = found_holyday;
-  return EL_RES_OK;
-}
-//==================================================
-
-T_ListItem* CheckSchedule(T_EventList* id_list, s_Time* in_time)
-{
-  unsigned short i;
-  T_ListItem* item = id_list->first;;
-
-  if(id_list->size == 0) return NULL;
-
-  for(i=0; i < id_list->size; i++)
-  {
-    if(item->event.cycle_flags.el.is_showed ==0 )
-    {
-      if((!item->event.start_time.use_hour) || (item->event.start_time.hour == in_time->hour))
-        if((!item->event.start_time.use_minute) || (item->event.start_time.minute == in_time->minute))
-        {
-          return item;
-        }
-    }
-
-    item = item->next;
-  }
-
- return NULL;
-}
-//==================================================
 
 
 
-int MomentToStr( T_Date in_date,
-                 T_Time in_time,
-                 AnsiString * out_day,
-                 AnsiString * out_time)
-{
- int i, c_f, c_e;
- AnsiString str_date, str_time, str_buf;
 
- str_date=""; str_time="";
 
- if(in_date.exclusive_day) str_date="* ";
-
- if(in_date.use_day) str_date=str_date + IntToStr(in_date.day);
- if(in_date.use_month)
-   {
-    //if (!event.start_date.use_day) str_date=MonthOfDay[event.start_date.mounth-1];
-    //  else
-    str_date=str_date+" "+MonthName[in_date.month-1];
-   }
-   else
-   {
-    if (in_date.use_day) str_date=str_date+" число ";
-   }
- if(in_date.use_year)
-   {
-    if (in_date.use_month)
-      {
-       str_date=str_date+" "+IntToStr(in_date.year);
-      }
-      else str_date=str_date+IntToStr(in_date.year);
-   }
-
- if(in_date.use_weekly)
-   {
-    c_f=c_e=-1;
-    for (i=0;i<7;i++)
-      {
-       if( (in_date.weekday & (1 << i)) != 0 )
-         {
-          if (c_f == -1) c_f = i;
-          c_e = i;
-         }
-      }// for
-
-    if(c_f != -1)
-      {
-       str_date=str_date + WeekSDay[c_f];
-       if( (c_e != -1) && (c_e != c_f) )
-         str_date=str_date + ".."+WeekSDay[c_e];
-      }
-   } // weekly
-
- *out_day = str_date;
-
- if(in_time.use_hour) str_time=IntToStr(in_time.hour);
-
- if(in_time.use_minute)
-   {
-    if (in_time.minute<10)
-      {
-       str_buf = "0"+ IntToStr(in_time.minute);
-      }
-      else str_buf = IntToStr(in_time.minute);
-
-    if (in_time.use_hour) str_time=str_time+":"+str_buf;
-      else str_time=str_buf+" мин.";
-   }
-   else
-   {
-    if (in_time.use_hour) str_time=str_time+" ч.";
-//      else
-//      {
-//       str_time="-";
-//      }
-   }
-
- *out_time = str_time;
- /*
- if(str_date != "")
-   {
-    if (str_time != "") str_date = str_date+" - "+str_time;
-   }
-   else
-     {
-      if(str_time != "") { str_date = str_time; }
-     }
-
- *text = str_date+" ";
- */
- return 0;
-}
 
 

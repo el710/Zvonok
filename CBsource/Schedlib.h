@@ -35,6 +35,7 @@
 #define WD_SATURDAY 0x20
 #define WD_SUNDAY   0x40
 
+
 typedef struct
 {
  unsigned year    :16;  // 0x270F
@@ -111,15 +112,15 @@ typedef struct
  char* caption;
  char* sound;
 
-}Ti_Event;
+}T_Event;
 
 
-typedef struct l_it
+typedef struct T_ListItem
 {
-  Ti_Event event;
+  T_Event event;
 
-  struct l_it* prev;
-  struct l_it* next;
+  struct T_ListItem* prev;
+  struct T_ListItem* next;
 } T_ListItem;
 
 
@@ -135,16 +136,18 @@ typedef struct
 
 //========= defines of functions
 
-int NewEvent(Ti_Event * event);  // make event structure
-int FreeEvent(Ti_Event * event); // free allocated memory
-void InitEvent(Ti_Event * event); // init event structure
+int NewEvent(T_Event * event);  // make event structure
+int FreeEvent(T_Event * event); // free allocated memory
+void InitEvent(T_Event * event); // init event structure
 
 void EventList_init(T_EventList* list);  // init EventList variables
 void EventList_clear(T_EventList* id_list); // free items of EventList
-T_ListItem* EventList_push(T_EventList* id_list, Ti_Event* in_event);  // add new Item to List
-T_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num);  // take event from List by order number
-T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, Ti_Event* in_event);
+T_ListItem* EventList_add(T_EventList* id_list, T_Event* in_event);  // add new Item to List & increase item number
+T_ListItem* EventList_copy(T_EventList* id_list, T_Event* in_event);  // copy Item from list to List & save item number
+T_ListItem* EventList_get(T_EventList* id_list, unsigned int in_num);  // find event in List by number
+T_ListItem* EventList_update(T_EventList* id_list, unsigned int in_num, T_Event* in_event);
 void EventList_delete(T_EventList* id_list, unsigned int in_num);
+
 
 int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_list);
 
@@ -154,12 +157,6 @@ int EventList_SaveFile();
 int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
                       T_EventList* out_today, bool* out_holyday);
 T_ListItem* CheckSchedule(T_EventList* id_list, s_Time* in_time);
-
-
-   int MomentToStr(T_Date in_date,
-                   T_Time in_time,
-                   AnsiString * out_day,
-                   AnsiString * out_time);
 
 
 #endif // SHEDULE_LIB_HEADER
