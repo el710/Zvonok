@@ -139,10 +139,10 @@ unsigned int CheckRingTime;  // delay counter for check ring
 //================================================================
 // ============== User Functions =================================
 
-int MomentToStr( T_Date in_date,
+int EventStr( T_Date in_date,
                  T_Time in_time,
-                 AnsiString * out_day,
-                 AnsiString * out_time)
+                 AnsiString* out_day,
+                 AnsiString* out_time)
 {
  int i, c_f, c_e;
  AnsiString str_date, str_time, str_buf;
@@ -232,14 +232,24 @@ int MomentToStr( T_Date in_date,
 }
 //=========================================================
 
-
-void NowString(AnsiString & date,AnsiString & time)
+AnsiString DateString(s_Date* date)
 {
- AnsiString str_date, str_time, str_buf;
+ AnsiString str_date;
+
+ str_date=IntToStr(date->day);
+ str_date = str_date + " " + Months[date->month - 1] + " " + IntToStr(date->year);
+ str_date=str_date+" "+WeekFDay[date->weekday];
+
+ return str_date;
+}
+
+void NowString(AnsiString& date, AnsiString& time)
+{
  TDateTime dt;
+ AnsiString str_date, str_time, str_buf;
+
  unsigned short n_year, n_mon, n_day, n_wd;
  unsigned short n_hour, n_min, n_sec, n_msec;
-
 
  dt = Now();
  dt.DecodeDate(&n_year,&n_mon,&n_day);
@@ -250,11 +260,7 @@ void NowString(AnsiString & date,AnsiString & time)
  str_date=""; str_time="";
 
  str_date=IntToStr(n_day);
-
-// if(n_mon < 10) str_date=str_date+".0"+IntToStr(n_mon)+"."+IntToStr(n_year);
-//   else str_date=str_date+"."+IntToStr(n_mon)+"."+IntToStr(n_year);
  str_date = str_date + " " + Months[n_mon-1] + " " + IntToStr(n_year);
-
  str_date=str_date+" "+WeekFDay[n_wd];
 
 
@@ -1077,8 +1083,8 @@ void ShowBase()
 
   T_ListItem* item;
 
-  T_Date in_date;
-  T_Time in_time;
+  s_Date in_date;
+
 
 #ifdef GRID_TITLE
    MainForm->CurrentBase->RowCount = 2;
@@ -1104,25 +1110,15 @@ void ShowBase()
     }
 
     in_date.year = ShowList.date.year;
-    in_date.use_year = true;
     in_date.month = ShowList.date.month;
-    in_date.use_month = true;
     in_date.day = ShowList.date.day;
-    in_date.use_day = true;
     in_date.weekday = ShowList.date.weekday;
-    in_date.use_weekly = true;
-    in_time.use_hour = false;
-    in_time.use_minute = false;
-    in_time.use_second = false;
+    str_date = DateString(&in_date);
 
-    MomentToStr(in_date, in_time, &str_date, &str_time);
 #ifdef GRID_TITLE
    MainForm->CurrentBase->Cells[1][0] = "События на: " + str_date;
 #endif
   }
-
-
-
 
   if( ShowList.list->size > 0)
   {
@@ -1136,7 +1132,7 @@ void ShowBase()
     item = ShowList.list->first;
     for(i=0; i < ShowList.list->size; i++)
     {
-      MomentToStr(item->event.start_date, item->event.start_time, &str_date, &str_time);
+      EventStr(item->event.start_date, item->event.start_time, &str_date, &str_time);
 
       if(str_date != "")
       {
@@ -2441,7 +2437,7 @@ void ShowMomentTitle()
  MakeDate(&in_date);
  MakeTime(&in_time);
 
- MomentToStr(in_date, in_time, &str_day, &str_time);
+ EventStr(in_date, in_time, &str_day, &str_time);
 
  if(str_day == "") MainForm->DateEvent->Caption = "Ежедневно";
  else MainForm->DateEvent->Caption = str_day;
@@ -2589,7 +2585,7 @@ void ShowEditDialog(T_Event* in_event)
 
  MainForm->Caption="Изменить событие";
  MainForm->ButSaveEvent->Caption="Сохранить изменения";
- MainForm->EventText->Caption = " Событие: " + IntToStr(in_event->cycle_flags.el.id_event +1)+ " ";
+ MainForm->EventText->Caption = " Событие: N" + IntToStr(in_event->cycle_flags.el.id_event +1)+ " ";
  MainForm->ButSaveas->Visible= true;
 
  if(!in_event->start_date.use_day)
@@ -2989,7 +2985,7 @@ void DoSignal(T_Event & in_event)
   unsigned int res;
   T_Result io_res;
 
-  MomentToStr(in_event.start_date, in_event.start_time, &str_day, &str_time);
+  EventStr(in_event.start_date, in_event.start_time, &str_day, &str_time);
   if(str_day != "")
   {
     if (str_time != "") str_buf = str_day+" - "+str_time;
@@ -3082,7 +3078,7 @@ void __fastcall TMainForm::FormCreate(TObject *Sender)
   b_date.year = n_year;
   b_date.month = n_mon;
   b_date.day = n_day;
-  b_date.weekday = (1 << n_wd);
+  b_date.weekday = n_wd;
 
   b_time.hour = n_hour;
   b_time.minute = n_min;
@@ -3340,6 +3336,22 @@ void __fastcall TMainForm::CurrentBaseDrawCell(TObject *Sender, int ACol,
 {
  int i;
 
+
+ if(CurrentBase->Cells[3][ARow] == "*" && ACol <3)
+ {
+    CurrentBase->Canvas->Font->Color = clBlue;
+     CurrentBase->Canvas->FillRect(Rect);
+     CurrentBase->Canvas->TextOut(Rect.Left,Rect.Top,CurrentBase->Cells[ACol][ARow]);
+ }
+ else
+ {
+   if(DeleteMode){
+     CurrentBase->Canvas->Font->Color = clGray;
+     CurrentBase->Canvas->FillRect(Rect);
+     CurrentBase->Canvas->TextOut(Rect.Left,Rect.Top,CurrentBase->Cells[ACol][ARow]);
+   }
+ }
+
 #ifdef GRID_TITLE
   if( (ARow == 0) || (ACol == 0) )
 #else
@@ -3354,8 +3366,11 @@ void __fastcall TMainForm::CurrentBaseDrawCell(TObject *Sender, int ACol,
 
      CurrentBase->Canvas->TextOut(Rect.Left+i,Rect.Top,CurrentBase->Cells[ACol][ARow]);
     }
+
+
+
  if(ACol == 2)
-   {
+ {
      CurrentBase->Canvas->Font->Color = CurrentBase->Color;
      CurrentBase->Canvas->FillRect(Rect);
      CurrentBase->Canvas->TextOut(Rect.Left,Rect.Top,CurrentBase->Cells[ACol][ARow]);
@@ -3450,18 +3465,21 @@ void __fastcall TMainForm::ButShowTodayClick(TObject *Sender)
      ShowList.date.year = n_year;
      ShowList.date.month = n_mon;
      ShowList.date.day = n_day;
-     ShowList.date.weekday = (1 << n_wd);
+     ShowList.date.weekday = n_wd;
 
      ShowBase();
      MainForm->CurrentBase->SetFocus();
+
+     PageControl2->ActivePage = MainMenu;
+     DeleteMode = false;
    }
 }
 //---------------------------------------------------------------------------
 
 void __fastcall TMainForm::ButAllEventClick(TObject *Sender)
 {
- if (ShowList.t_list != BASE_LIST)
-   {
+  if(ShowList.t_list != BASE_LIST)
+  {
     MainForm->ButShowToday->Font->Color = clSilver;
     MainForm->ButShowToday->Font->Size = 10;
     MainForm->ButAllEvent->Font->Color = clGreen;
@@ -3472,7 +3490,10 @@ void __fastcall TMainForm::ButAllEventClick(TObject *Sender)
     ShowBase();
 
     MainForm->CurrentBase->SetFocus();
-   }
+
+    PageControl2->ActivePage = MainMenu;
+    DeleteMode = false;
+  }
 }
 //---------------------------------------------------------------------------
 
@@ -3554,7 +3575,6 @@ void __fastcall TMainForm::CurrentBaseMouseDown(TObject *Sender,
       TMouseButton Button, TShiftState Shift, int X, int Y)
 {
 
-
  if ( !DeleteMode
      && (MainForm->CurrentBase->Cells[2][MainForm->CurrentBase->Row] != "")
     )
@@ -3562,7 +3582,19 @@ void __fastcall TMainForm::CurrentBaseMouseDown(TObject *Sender,
     GridGetMouse = true;
     TimeChoice = 0;
    }
-// if (MainForm->DelEvent->Visible)  MainForm->DelEvent->Visible = false;
+
+ if(DeleteMode)
+ {
+   if(MainForm->CurrentBase->Cells[3][MainForm->CurrentBase->Row] == "*")
+   {
+     MainForm->CurrentBase->Cells[3][MainForm->CurrentBase->Row] = "";
+   }
+   else
+   {
+     MainForm->CurrentBase->Cells[3][MainForm->CurrentBase->Row] = "*";
+   }
+   MainForm->CurrentBase->Repaint();
+ }
 
 }
 //---------------------------------------------------------------------------
@@ -3701,8 +3733,17 @@ void __fastcall TMainForm::SpeedButton6Click(TObject *Sender)
 
 void __fastcall TMainForm::ButEMBackClick(TObject *Sender)
 {
- PageControl2->ActivePage = MainMenu;
- DeleteMode = false;        
+ //DeleteModeOff()
+ {
+   PageControl2->ActivePage = MainMenu;
+   DeleteMode = false;
+
+
+   for(int i=0; i<MainForm->CurrentBase->RowCount; i++)
+   MainForm->CurrentBase->Cells[3][i]="";
+
+   MainForm->CurrentBase->Repaint();
+ }
 }
 //---------------------------------------------------------------------------
 
@@ -3717,8 +3758,12 @@ void __fastcall TMainForm::ButClearClick(TObject *Sender)
 void __fastcall TMainForm::ButDelEventClick(TObject *Sender)
 {
  DelNumEvent = StrToInt(MainForm->CurrentBase->Cells[2][MainForm->CurrentBase->Row]);
- MainForm->Label2->Caption = MainForm->CurrentBase->Cells[0][MainForm->CurrentBase->Row];
- MainForm->Label3->Caption = MainForm->CurrentBase->Cells[1][MainForm->CurrentBase->Row];
+ MainForm->Memo4->Clear();
+ MainForm->Memo4->Lines->Add(MainForm->CurrentBase->Cells[0][MainForm->CurrentBase->Row]);
+ MainForm->Memo4->Lines->Add(MainForm->CurrentBase->Cells[1][MainForm->CurrentBase->Row]);
+
+// MainForm->Label2->Caption = MainForm->CurrentBase->Cells[0][MainForm->CurrentBase->Row];
+// MainForm->Label3->Caption = MainForm->CurrentBase->Cells[1][MainForm->CurrentBase->Row];
 
 
 
@@ -3951,8 +3996,14 @@ void __fastcall TMainForm::Timer2Timer(TObject *Sender)
   if(GridGetMouse)
   {
     ++TimeChoice;
-    if (TimeChoice >= UpDownCounter)
+    if (TimeChoice >= MOUSE_UP_DOWN_COUNTER)
     {
+      MainForm->CurrentBase->Cells[3][MainForm->CurrentBase->Row]="*";
+
+      MainForm->CurrentBase->Visible = false;
+      MainForm->CurrentBase->Visible = true;
+      MainForm->CurrentBase->SetFocus();
+      
       PageControl2->ActivePage = EditMenu;
       DeleteMode = true;
       GridGetMouse = false;
@@ -4511,4 +4562,17 @@ void __fastcall TMainForm::AltReadScheduleClick(TObject *Sender)
  */
 }
 //---------------------------------------------------------------------------
+
+void __fastcall TMainForm::Button1Click(TObject *Sender)
+{
+ TDateTime dt;
+
+ dt = Now();
+
+ dt = dt.CurrentDate() - 18;
+
+ MainForm->Label19->Caption = dt.DateString()+ IntToStr(dt.DayOfWeek());
+}
+//---------------------------------------------------------------------------
+
 

@@ -168,7 +168,7 @@ typedef union
 
 #define COL_MOMENT_WIDTH  150
 
-#define UpDownCounter    3
+#define MOUSE_UP_DOWN_COUNTER  3  // periods of 300 ms for choose event in table
 
 
 
