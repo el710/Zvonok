@@ -1,24 +1,31 @@
-#include "malloc.h"
-#include "stdio.h"
-#include "stdint.h"
-#include "string.h"
 
 #include "Schedlib.h"
 
+#ifndef STM_USAGE
+   #include "malloc.h"
+   #include "stdio.h"
+   #include "stdint.h"	 
+#else
+   #include "stdlib.h"
+#endif
+
+#include "string.h"
+
+
 /*
-AnsiString MonthName[] = {"января","февраля","марта", "апреля",
-                           "мая", "июня", "июля", "августа",
-                           "сентября", "октября", "ноября", "декабря"};
+AnsiString MonthName[] = {"??????","???????","?????", "??????",
+                           "???", "????", "????", "???????",
+                           "????????", "???????", "??????", "???????"};
 
-AnsiString WeekDay[] = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
+AnsiString WeekDay[] = {"??", "??", "??", "??", "??", "??", "??"};
 
-AnsiString WeekFDay[] = {"Понедельник",
-                         "Вторник",
-                         "Среда",
-                         "Четверг",
-                         "Пятница",
-                         "Суббота",                                
-                         "Воскресенье"};
+AnsiString WeekFDay[] = {"???????????",
+                         "???????",
+                         "?????",
+                         "???????",
+                         "???????",
+                         "???????",                                
+                         "???????????"};
 */
 
 
@@ -27,15 +34,16 @@ AnsiString WeekFDay[] = {"Понедельник",
 int NewEvent(T_Event * event)
 {
   char* p_char;
-
+	
   event->caption = NULL;
   event->sound = NULL;
 
-  p_char = (char *) malloc(MESSAGE_ROW_SIZE);
+  p_char = (char*) malloc(MESSAGE_ROW_SIZE);
+	
   if( p_char == NULL ) return EL_RES_ALLOCMEM_ERROR;
   event->caption = p_char;
 
-  p_char = (char *) malloc(SOUND_FILENAME_SIZE);
+  p_char = (char*) malloc(SOUND_FILENAME_SIZE);
   if( p_char == NULL )
   {
    free(event->caption);
@@ -254,7 +262,7 @@ void EventList_delete(T_EventList* id_list, unsigned int in_num)
       else
       {
         id_list->first = item->next;
-        item->next->prev == NULL;
+        item->next->prev = NULL;
         id_list->size--;
       }
     }
@@ -262,7 +270,7 @@ void EventList_delete(T_EventList* id_list, unsigned int in_num)
     if(item->next == NULL) // item is last
     {
       id_list->last = item->prev;
-      item->prev->next == NULL;
+      item->prev->next = NULL;
       id_list->size--;
     }
     else
@@ -319,8 +327,8 @@ int MakeTodaySchedule(T_EventList* in_base, s_Date* in_date,
          )
       )
     {
-      if(   check_holyday == false
-         && item->event.start_date.exclusive_day   // event is holyday
+      if(   (check_holyday == false)
+         && (item->event.start_date.exclusive_day)   // event is holyday
         )
       { found_holyday = true; check_holyday = true; }
       else { found_holyday = false; }
@@ -513,8 +521,11 @@ int EventList_ReadMem(char* in_memfile, unsigned int in_size, T_EventList* out_l
 }
 //==================================================
 
+
 int EventList_ReadFile(const char* in_SchedFile, T_EventList* out_base)
 {
+	
+#ifndef STM_USAGE
   FILE* tfile;
   long int fsize, i;
   char* virtual_file;
@@ -552,18 +563,10 @@ int EventList_ReadFile(const char* in_SchedFile, T_EventList* out_base)
 
   free(virtual_file);
   fclose(tfile);
-
+#endif //STM_USAGE
 
   return EL_RES_OK;
 }
+
 //==================================================
-
-
-
-
-
-
-
-
-
 

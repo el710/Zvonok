@@ -2,6 +2,15 @@
 #ifndef SHEDULE_LIB_HEADER
 #define SHEDULE_LIB_HEADER
 
+#define STM_USAGE
+
+
+#ifdef STM_USAGE
+   typedef unsigned char bool;
+	 #define false 0
+	 #define true  1
+#endif
+
 
 //======== list of function's results
 #define  EL_RES_NO_EVENT        -1
@@ -58,7 +67,7 @@ typedef struct
  unsigned day     :5;   // 0x1F
  unsigned weekday :7;   //  WD_MONDAY +... + WD_SUNDAY
 
- bool use_year:1;
+ bool	use_year:1;
  bool use_month:1;
  bool use_day:1;
  bool use_weekly:1;
